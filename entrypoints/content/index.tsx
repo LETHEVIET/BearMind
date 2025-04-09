@@ -4,6 +4,18 @@ import App from './App.tsx';
 import {i18nConfig} from "@/components/i18nConfig.ts";
 import initTranslations from "@/components/i18n.ts";
 import {ThemeProvider} from "@/components/theme-provider.tsx";
+import { browser } from "wxt/browser";
+
+// Listen for messages from the extension
+browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "getPageContent") {
+    // Get the page HTML content
+    const content = document.documentElement.outerHTML;
+    sendResponse(content);
+    return true; // Important for async response
+  }
+});
+
 
 export default defineContentScript({
     matches: ['*://*/*'],

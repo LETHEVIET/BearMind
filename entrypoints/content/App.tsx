@@ -9,8 +9,11 @@ import ExtMessage, {MessageType} from "@/entrypoints/types.ts";
 import Header from "@/entrypoints/content/header.tsx";
 import {useTranslation} from "react-i18next";
 import {useTheme} from "@/components/theme-provider.tsx";
+import {ChatSettingsProvider} from "@/components/ChatSettingsContext";
+import { Toaster } from "@/components/ui/toaster";
 
-export default () => {
+// Main application content
+const AppContent = () => {
     const [showContent, setShowContent] = useState(true);
     const [showButton, setShowButton] = useState(false)
     const [showCard, setShowCard] = useState(false)
@@ -34,7 +37,6 @@ export default () => {
     }
 
     useEffect(() => {
-
         if (document.readyState === "complete") {
             // load event has already fired, run your code or function here
             console.log("dom complete")
@@ -61,9 +63,7 @@ export default () => {
         });
 
         initI18n();
-
     }, []);
-
 
     return (
         <div className={theme}>
@@ -83,7 +83,15 @@ export default () => {
             </div>
             }
         </div>
+    );
+};
 
-
-    )
+// Wrap with the settings provider
+export default () => {
+    return (
+        <ChatSettingsProvider>
+            <AppContent />
+            <Toaster />
+        </ChatSettingsProvider>
+    );
 };
