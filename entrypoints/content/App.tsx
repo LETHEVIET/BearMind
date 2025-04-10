@@ -59,6 +59,13 @@ const AppContent = () => {
                 i18n.changeLanguage(message.content)
             } else if (message.messageType == MessageType.changeTheme) {
                 toggleTheme(message.content)
+            } else if (message.messageType == MessageType.changeFontSize) {
+                // Apply font size setting using CSS variable
+                document.documentElement.style.setProperty(
+                    '--base-font-size',
+                    message.content === 'small' ? '14px' : 
+                    message.content === 'large' ? '18px' : '16px'
+                );
             }
         });
 

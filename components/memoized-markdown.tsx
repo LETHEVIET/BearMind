@@ -12,9 +12,11 @@ import {
   CodeBlockCode,
   CodeBlockGroup,
 } from "./ui/code-block";
+import { useAppContext } from "./AppContext";
 
 const Pre = ({ children, language, codeString }) => {
   const [copied, setCopied] = useState(false);
+  const { ui } = useAppContext();
 
   const handleCopy = () => {
     navigator.clipboard.writeText(codeString);
@@ -42,7 +44,7 @@ const Pre = ({ children, language, codeString }) => {
           )}
         </Button>
       </CodeBlockGroup>
-      <CodeBlockCode code={codeString} language={language || "text"} />
+      <CodeBlockCode code={codeString} language={language || "text"} theme={`github-${ui.theme}`} />
     </CodeBlock>
   );
 };
@@ -54,22 +56,22 @@ const MemoizedMarkdownBlock = memo(
         rehypePlugins={[rehypeRaw]}
         remarkPlugins={[remarkGfm]}
         components={{
-          h1: ({ children }) => <h1 className="text-3xl font-bold my-4">{children}</h1>,
-          h2: ({ children }) => <h2 className="text-2xl font-bold my-3">{children}</h2>,
-          h3: ({ children }) => <h3 className="text-xl font-bold my-2">{children}</h3>,
-          h4: ({ children }) => <h4 className="text-lg font-bold my-2">{children}</h4>,
-          h5: ({ children }) => <h5 className="text-base font-bold my-1">{children}</h5>,
-          h6: ({ children }) => <h6 className="text-sm font-bold my-1">{children}</h6>,
+          h1: ({ children }) => <h1 className="text-3xl font-bold my-4 text-foreground">{children}</h1>,
+          h2: ({ children }) => <h2 className="text-2xl font-bold my-3 text-foreground">{children}</h2>,
+          h3: ({ children }) => <h3 className="text-xl font-bold my-2 text-foreground">{children}</h3>,
+          h4: ({ children }) => <h4 className="text-lg font-bold my-2 text-foreground">{children}</h4>,
+          h5: ({ children }) => <h5 className="text-base font-bold my-1 text-foreground">{children}</h5>,
+          h6: ({ children }) => <h6 className="text-sm font-bold my-1 text-foreground">{children}</h6>,
           
-          ul: ({ children }) => <ul className="list-disc pl-6 my-2">{children}</ul>,
-          ol: ({ children }) => <ol className="list-decimal pl-6 my-2">{children}</ol>,
-          li: ({ children }) => <li className="my-1">{children}</li>,
+          ul: ({ children }) => <ul className="list-disc pl-6 my-2 text-foreground">{children}</ul>,
+          ol: ({ children }) => <ol className="list-decimal pl-6 my-2 text-foreground">{children}</ol>,
+          li: ({ children }) => <li className="my-1 text-foreground">{children}</li>,
           
-          blockquote: ({ children }) => <blockquote className="border-l-4 border-gray-300 pl-4 py-1 my-2 italic bg-gray-50 dark:bg-gray-800">{children}</blockquote>,
+          blockquote: ({ children }) => <blockquote className="border-l-4 border-border pl-4 py-1 my-2 italic bg-muted text-foreground">{children}</blockquote>,
           
-          a: ({ href, children }) => <a href={href} className="text-blue-500 hover:underline">{children}</a>,
+          a: ({ href, children }) => <a href={href} className="text-accent-foreground hover:underline">{children}</a>,
           
-          hr: () => <hr className="my-4 border-gray-300" />,
+          hr: () => <hr className="my-4 border-border" />,
           
           // Custom text renderer to detect and render tab references
           p({ children }) {
@@ -132,15 +134,15 @@ const MemoizedMarkdownBlock = memo(
                 return child;
               });
               
-              return <p>{processedChildren}</p>;
+              return <p className="text-foreground">{processedChildren}</p>;
             } else if (typeof children === 'string') {
               // Process single string
               const processed = processString(children);
-              return <p>{processed}</p>;
+              return <p className="text-foreground">{processed}</p>;
             }
             
             // Default case: just return children as is
-            return <p>{children}</p>;
+            return <p className="text-foreground">{children}</p>;
           },
           code({ node, inline, className = "blog-code", children, ...props }) {
             const match = /language-(\w+)/.exec(className || "");
@@ -148,7 +150,7 @@ const MemoizedMarkdownBlock = memo(
             return !inline && match ? (
               <Pre language={match[1]} codeString={codeString} />
             ) : (
-              <code className="bg-muted px-1.5 py-0.5 rounded-sm" {...props}>
+              <code className="bg-muted text-foreground px-1.5 py-0.5 rounded-sm" {...props}>
                 {codeString}
               </code>
             );

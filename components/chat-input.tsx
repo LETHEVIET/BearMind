@@ -35,10 +35,9 @@ import { useChatSettings, tabReaders } from "@/components/ChatSettingsContext";
 import { AnimatePresence, motion } from "framer-motion";
 import { SearchToggleButton } from "@/components/search-toggle-button";
 
-import { cn } from "/lib/utils";
+import { cn } from "@/components/lib/utils";
 import { DEFAULT_ACTIONS } from "@/utils/action-button";
-// Font size variable
-const FONT_SIZE = "xs"; // Options: xs, sm, base, lg, xl, etc.
+
 const actions = DEFAULT_ACTIONS;
 
 export default function ChatInput({
@@ -256,7 +255,7 @@ export default function ChatInput({
               <Button
                 size={"no"}
                 variant="ghost"
-                className="flex items-center gap-2 py-1 px-1 gap-2 border rounded-lg hover:text-foreground hover:bg-muted  text-xs"
+                className="flex items-center gap-2 py-1 px-1 gap-2 border rounded-lg hover:text-foreground hover:bg-muted text-xs"
               >
                 <Paperclip className="h-4 w-4" /> <p>Add Tabs...</p>
               </Button>
@@ -269,7 +268,7 @@ export default function ChatInput({
                 tabs.map((tab) => (
                   <DropdownMenuItem
                     key={tab.id}
-                    className={`flex items-center gap-2 text-${FONT_SIZE} py-2`}
+                    className="flex items-center gap-2 text-xs py-2"
                     onClick={() => toggleTabSelection(tab.id)}
                   >
                     <div className="w-4 h-4 flex items-center justify-center">
@@ -325,7 +324,7 @@ export default function ChatInput({
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
             rows={1}
-            className={`w-full px-1 border-none bg-transparent text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 text-${FONT_SIZE} min-h-[24px] max-h-[500px] overflow-y-auto resize-none`}
+            className="w-full px-1 border-none bg-transparent text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 text-xs min-h-[24px] max-h-[500px] overflow-y-auto resize-none"
             onInput={adjustTextareaHeight}
           />
         </div>
@@ -346,7 +345,7 @@ export default function ChatInput({
                   size={"no"}
                   className="hover:bg-muted/80 text-foreground rounded-full gap-0"
                 >
-                  <span className={`text-${FONT_SIZE}`}>
+                  <span className="text-xs">
                     {selectedTabReader.name}
                   </span>
                   <ChevronDown className="h-4 w-4" />
@@ -359,7 +358,7 @@ export default function ChatInput({
                     onClick={() => handleTabReaderSelect(reader)}
                     className={`${
                       selectedTabReader.id === reader.id ? "bg-muted" : ""
-                    } text-${FONT_SIZE}`}
+                    } text-xs`}
                   >
                     {reader.name}
                   </DropdownMenuItem>
@@ -374,7 +373,7 @@ export default function ChatInput({
                   size={"no"}
                   className="hover:bg-muted/80 text-foreground rounded-full gap-0"
                 >
-                  <span className={`text-${FONT_SIZE}`}>
+                  <span className="text-xs">
                     {selectedModel.name}
                   </span>
                   <ChevronDown className="h-4 w-4" />
@@ -389,7 +388,7 @@ export default function ChatInput({
                           onClick={() => handleModelSelect(model)}
                           className={`${
                             selectedModel.id === model.id ? "bg-muted" : ""
-                          } text-${FONT_SIZE}`}
+                          } text-xs`}
                         >
                           {model.name}
                         </DropdownMenuItem>

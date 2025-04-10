@@ -1,22 +1,31 @@
 import React, { useEffect, useState } from "react";
-import { Drawer } from "@/components/ui/drawer";
+import { 
+  Drawer, 
+  DrawerContent, 
+  DrawerHeader,
+  DrawerTitle,
+  DrawerClose
+} from "@/components/ui/drawer";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { TabContentViewer } from "@/components/tab-content-viewer";
 import { BrowserTab, getBrowserTabs } from "@/utils/browser-tabs";
-import { Book } from "lucide-react";
+import { Book, X } from "lucide-react";
 import { browser } from "wxt/browser";
+import { useAppContext } from "./AppContext";
 
 interface ConvertedTabsDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  convertedTabIds: number[];
 }
 
 export function ConvertedTabsDrawer({ 
   open, 
-  onOpenChange, 
-  convertedTabIds 
+  onOpenChange 
 }: ConvertedTabsDrawerProps) {
+  const { session } = useAppContext();
+  const { convertedTabIds } = session;
+  
   const [tabs, setTabs] = useState<BrowserTab[]>([]);
   const [currentTab, setCurrentTab] = useState<BrowserTab | null>(null);
   const [markdownContents, setMarkdownContents] = useState<Record<number, string>>({});
@@ -68,34 +77,43 @@ export function ConvertedTabsDrawer({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange} side="right">
-      <div className="flex flex-col h-full">
-        <div className="flex items-center mb-4">
-          <Book className="mr-2 h-5 w-5" />
-          <h2 className="text-lg font-semibold">Converted Tabs</h2>
-        </div>
+      <DrawerContent className="flex flex-col h-full">
+        <DrawerHeader>
+          <DrawerTitle className="flex items-center">
+            <Book className="mr-2 h-5 w-5" />
+            Converted Tabs
+          </DrawerTitle>
+          <DrawerClose asChild>
+            <Button variant="ghost" size="icon" className="absolute right-4 top-4">
+              <X className="h-4 w-4" />
+            </Button>
+          </DrawerClose>
+        </DrawerHeader>
         
-        {isLoading ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
-        ) : convertedTabIds.length === 0 ? (
-          <Card className="p-4 text-center text-muted-foreground">
-            No tabs have been converted to markdown yet.
-          </Card>
-        ) : Object.keys(markdownContents).length === 0 ? (
-          <Card className="p-4 text-center text-muted-foreground">
-            Content for converted tabs not found. Try selecting and reading tabs again.
-          </Card>
-        ) : (
-          <div className="flex-1 overflow-hidden">
-            <TabContentViewer 
-              markdownContents={markdownContents} 
-              tabs={allTabs}
-              currentTabId={currentTab?.id}
-            />
-          </div>
-        )}
-      </div>
+        <div className="flex-1 px-4 pb-4">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : convertedTabIds.length === 0 ? (
+            <Card className="p-4 text-center text-muted-foreground">
+              No tabs have been converted to markdown yet.
+            </Card>
+          ) : Object.keys(markdownContents).length === 0 ? (
+            <Card className="p-4 text-center text-muted-foreground">
+              Content for converted tabs not found. Try selecting and reading tabs again.
+            </Card>
+          ) : (
+            <div className="flex-1 overflow-hidden">
+              <TabContentViewer 
+                markdownContents={markdownContents} 
+                tabs={allTabs}
+                currentTabId={currentTab?.id}
+              />
+            </div>
+          )}
+        </div>
+      </DrawerContent>
     </Drawer>
   );
 }

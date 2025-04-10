@@ -5,6 +5,7 @@
 
 @layer base {
     :root {
+        --base-font-size: 16px; /* Default base font size */
         --background: 0 0% 98.82352941176471%; /* white */
         --foreground: 0 0% 12.549019607843137%; /* gray-950 */
         --card: 0 0% 97.6470588235294%; /* white */
@@ -57,6 +58,7 @@
     }
 
     .dark {
+        --base-font-size: 16px; /* Default base font size (for dark mode) */
         --background: 0 0% 6.666666666666667%; /* gray-950 */
         --foreground: 0 0% 93.33333333333333%; /* gray-50 */
         --card: 0 0% 9.803921568627452%; /* gray-950 */
@@ -88,4 +90,19 @@
     body {
         @apply bg-background text-foreground;
     }
+}
+
+/* Font size utilities */
+@layer utilities {
+  .text-size-adjust {
+    font-size: var(--base-font-size, 16px);
+  }
+  
+  .text-size-adjust-sm {
+    font-size: calc(var(--base-font-size, 16px) * 0.875);
+  }
+  
+  .text-size-adjust-lg {
+    font-size: calc(var(--base-font-size, 16px) * 1.125);
+  }
 }

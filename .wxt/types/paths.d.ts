@@ -3,15 +3,15 @@ import "wxt/browser";
 
 declare module "wxt/browser" {
   export type PublicPath =
+    | "/_icon/128.png"
+    | "/_icon/16.png"
+    | "/_icon/32.png"
+    | "/_icon/48.png"
+    | "/_icon/96.png"
     | "/_locales/en/messages.json"
-    | "/_locales/zh_CN/messages.json"
+    | "/_locales/vi/messages.json"
     | "/background.js"
     | "/content-scripts/content.js"
-    | "/icon/128.png"
-    | "/icon/16.png"
-    | "/icon/32.png"
-    | "/icon/48.png"
-    | "/icon/96.png"
     | "/polar-bear-3-svgrepo-com.svg"
     | "/popup-bak.html"
     | "/sidebar.js"

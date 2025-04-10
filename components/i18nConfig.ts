@@ -1,11 +1,11 @@
 export const i18nConfig = {
-    locales: ['en', 'zh_CN'],
+    locales: ['en', 'vi'],
     defaultLocale: 'en'
 };
 
 const languages = [
     {locale: 'en', name: "English"},
-    {locale: 'zh_CN', name: "中文简体"}
+    {locale: 'vi', name: "Tiếng Việt"}
 ]
 export default languages;
 

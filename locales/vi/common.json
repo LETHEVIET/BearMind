@@ -1,0 +1,9 @@
+{
+  "home": "Trang chủ",
+  "settings": "Cài đặt",
+  "themeSettings": "Cài đặt giao diện",
+  "i18nSettings": "Ngôn ngữ giao diện",
+  "introduce": "Giới thiệu",
+  "description": "Đây là một mẫu và công cụ khởi động cho tiện ích mở rộng trình duyệt Chrome, được xây dựng với Wxt、React、Tailwind css、Shadcn ui và Typescript.\nHỗ trợ chế độ tối và bản địa hóa",
+  "reference": "Tham khảo"
+}

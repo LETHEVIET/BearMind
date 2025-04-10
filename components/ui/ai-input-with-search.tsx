@@ -4,7 +4,7 @@ import { Globe, Paperclip, Send } from "lucide-react";
 import { useState } from "react";
 import { Textarea } from "/components/ui/textarea";
 import { motion, AnimatePresence } from "framer-motion";
-import { cn } from "/lib/utils";
+import { cn } from "@/components/lib/utils";
 import { useAutoResizeTextarea } from "/components/hooks/use-auto-resize-textarea";
 
 interface AIInputWithSearchProps {

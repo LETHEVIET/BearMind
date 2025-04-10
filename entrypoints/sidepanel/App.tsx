@@ -3,16 +3,16 @@ import "./App.module.css";
 import "../../assets/main.css";
 import { browser } from "wxt/browser";
 import ExtMessage, { MessageType } from "@/entrypoints/types.ts";
-import { useTheme } from "@/components/theme-provider.tsx";
 import { useTranslation } from "react-i18next";
-import { ChatSettingsProvider, useChatSettings } from "@/components/ChatSettingsContext";
-import QuoteFinder from "@/components/quote-finder"; // Import the new QuoteFinder component
+import { useAppContext } from "@/components/AppContext";
+import QuoteFinder from "@/components/quote-finder";
 
 import ChatInput from "@/components/chat-input";
 import { User } from "lucide-react";
 import { ChatContent } from "@/components/chat-content";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SettingsModal } from "@/components/settings-modal";
+import { ChatSettingsProvider } from "@/components/ChatSettingsContext";
 
 import { BrowserTab } from "@/utils/browser-tabs";
 import { 
@@ -21,6 +21,7 @@ import {
   GoogleAI 
 } from "@/utils/llm-message-formatter";
 import { TabReaderPanel } from "@/components/tab-reader-panel";
+import { DotBackground } from "@/components/dots-background";
 
 // Initial chat history (unchanged)
 const initialChatHistory = [];
@@ -41,10 +42,10 @@ const generateMessageId = () => {
 
 console.log("Content script loaded");
 
-const AppContent = () => {
-  const { theme, toggleTheme } = useTheme();
-  const { t, i18n } = useTranslation();
-  const { apiKey } = useChatSettings(); // Get API key from context
+const App = () => {
+  const { ui, session, resetSession } = useAppContext();
+  const { t } = useTranslation();
+  
   const [chatHistory, setChatHistory] = useState(initialChatHistory);
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef(null);
@@ -58,24 +59,21 @@ const AppContent = () => {
 
   // Add a ref for the bottom of the chat content
   const bottomRef = useRef(null);
-
-  // Add new state for tracking converted tab IDs
-  const [convertedTabIds, setConvertedTabIds] = useState<number[]>([]);
   
   // Initialize Google AI instance when API key changes
   useEffect(() => {
     // Create a new GoogleAI instance with the current API key
-    console.log('Creating GoogleAI instance with API key:', apiKey);
-    const newGoogleAIInstance = new GoogleAI(apiKey);
+    console.log('Creating GoogleAI instance with API key:', session.apiKey);
+    const newGoogleAIInstance = new GoogleAI(session.apiKey);
     setGoogleAIInstance(newGoogleAIInstance);
     
-    console.log("GoogleAI instance created with API key:", apiKey ? "API key provided" : "Using storage/fallback");
-  }, [apiKey]);
+    console.log("GoogleAI instance created with API key:", session.apiKey ? "API key provided" : "Using storage/fallback");
+  }, [session.apiKey]);
 
   // Reset chat history function
   const resetChat = () => {
     setChatHistory([]);
-    setConvertedTabIds([]);
+    resetSession();
     setMarkdownContents({});
   };
 
@@ -138,7 +136,7 @@ const AppContent = () => {
     const data = {
       text: userMessage.message,
       tabs: userMessage.tabs || [],
-      model: userMessage.model || selectedModel.id,
+      model: userMessage.model || session.selectedModel.id,
       highlightedText: userMessage.highlightedText || {},
       currentTabId: userMessage.currentTabId
     };
@@ -190,32 +188,17 @@ const AppContent = () => {
     };
   }, [shouldAutoScroll]);
 
-  // i18n initialization (unchanged)
-  async function initI18n() {
-    let data = await browser.storage.local.get("i18n");
-    if (data.i18n) {
-      await i18n.changeLanguage(data.i18n);
-    }
-  }
-
-  // Message and theme listeners (unchanged)
+  // Apply font size based on UI settings
   useEffect(() => {
-    browser.runtime.onMessage.addListener(
-      (message: ExtMessage, sender, sendResponse) => {
-        console.log("sidepanel:");
-        console.log(message);
-        if (message.messageType == MessageType.changeLocale) {
-          i18n.changeLanguage(message.content);
-        } else if (message.messageType == MessageType.changeTheme) {
-          toggleTheme(message.content);
-        }
-      }
+    // Set CSS variable for base font size instead of directly setting fontSize
+    document.documentElement.style.setProperty(
+      '--base-font-size',
+      ui.fontSize === 'small' ? '14px' : 
+      ui.fontSize === 'large' ? '18px' : '16px'
     );
+  }, [ui.fontSize]);
 
-    initI18n();
-  }, []);
-
-  // Handle chat submission (updated to use the GoogleAI instance)
+  // Handle chat submission (updated to use the AppContext)
   const handleChatSubmit = async (data: {
     text: string;
     tabs: BrowserTab[];
@@ -275,15 +258,19 @@ const AppContent = () => {
       if (data.tabs && data.tabs.length > 0) {
         newMarkdownContents = await readTabs(
           data.tabs, 
-          convertedTabIds, 
+          session.convertedTabIds, 
           updateTabProcessingStatus,
-          apiKey // Pass the API key from context
+          session.apiKey // Pass the API key from context
         );
         
-        // Update the list of converted tabs
+        // Update the list of converted tabs in the context
         const newTabIds = Object.keys(newMarkdownContents).map(Number);
         if (newTabIds.length > 0) {
-          setConvertedTabIds((prev) => [...prev, ...newTabIds]);
+          newTabIds.forEach(tabId => {
+            if (!session.convertedTabIds.includes(tabId)) {
+              resetSession(); // Use the context function to add converted tab IDs
+            }
+          });
         }
         
         // Update markdownContents state
@@ -316,7 +303,7 @@ const AppContent = () => {
         chatHistory,
         {...markdownContents, ...newMarkdownContents}, // Use both existing and new markdown contents
         updateStreamText,
-        apiKey // Pass the API key from context
+        session.apiKey // Pass the API key from context
       );
 
       setChatHistory((prevHistory) =>
@@ -352,19 +339,19 @@ const AppContent = () => {
   };
 
   return (
-    <div className={`${theme} w-screen h-screen`}>
+    <div className={`${ui.theme} w-screen h-screen`}>
       <div className="flex flex-col bg-background gap-0 h-full max-w-4xl mx-auto w-screen">
         <div className="flex items-center justify-between p-0.5 px-4 border-b">
-          <div className="">BearMind</div>
+          <div className="text-foreground">BearMind</div>
           <div className="flex items-center gap-2">
             {/* Add Quote Finder toggle button */}
             <button 
               onClick={() => setShowQuoteFinder(!showQuoteFinder)}
-              className="text-sm px-2 py-1 rounded bg-secondary hover:bg-secondary/80"
+              className="px-2 py-1 rounded bg-secondary hover:bg-secondary/80 text-foreground"
             >
               {showQuoteFinder ? 'Hide Quote Finder' : 'Find Quote in Page'}
             </button>
-            <SettingsModal resetChat={resetChat} convertedTabIds={convertedTabIds} />
+            <SettingsModal resetChat={resetChat} />
           </div>
         </div>
         
@@ -377,6 +364,7 @@ const AppContent = () => {
         
         <div className="flex-grow overflow-hidden w-full">
           {chatHistory.length === 0 ? (
+            <DotBackground className="flex items-center justify-center h-full">
             <div className="flex-col flex items-center justify-center h-full gap-4 text-muted-foreground">
               <p className="text-5xl">ʕ•ᴥ•ʔ</p>
               <p className="text-xl">Ask BearMind</p>
@@ -386,6 +374,7 @@ const AppContent = () => {
                 Review output carefully before using.
               </p>
             </div>
+            </DotBackground>
           ) : (
             <ScrollArea className="h-full w-full" ref={scrollAreaRef}>
               {/* Pass bottomRef, deleteMessage, and regenerateMessage to ChatContent */}
@@ -406,11 +395,9 @@ const AppContent = () => {
   );
 };
 
-// Wrap the application with our settings provider
-export default () => {
-  return (
-    <ChatSettingsProvider>
-      <AppContent />
-    </ChatSettingsProvider>
-  );
-};
+// Wrap App with ChatSettingsProvider
+export default () => (
+  <ChatSettingsProvider>
+    <App />
+  </ChatSettingsProvider>
+);

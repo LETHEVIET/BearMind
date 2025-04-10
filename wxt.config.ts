@@ -13,7 +13,7 @@ export default defineConfig({
     manifest: {
         permissions: ["activeTab", "scripting", "sidePanel", "storage", "tabs"],
         action: {},
-        name: '__MSG_extName__',
+        name: 'BearMind',
         description: '__MSG_extDescription__',
         default_locale: "en"
     },

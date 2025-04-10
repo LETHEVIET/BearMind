@@ -41,7 +41,15 @@ module.exports = {
         },
         extend: {
             fontSize: {
-                base: '16px',
+                xs: 'calc(var(--base-font-size, 16px) * 0.75)',
+                sm: 'calc(var(--base-font-size, 16px) * 0.875)',
+                base: 'var(--base-font-size, 16px)',
+                lg: 'calc(var(--base-font-size, 16px) * 1.125)',
+                xl: 'calc(var(--base-font-size, 16px) * 1.25)',
+                '2xl': 'calc(var(--base-font-size, 16px) * 1.5)',
+                '3xl': 'calc(var(--base-font-size, 16px) * 1.875)',
+                '4xl': 'calc(var(--base-font-size, 16px) * 2.25)',
+                '5xl': 'calc(var(--base-font-size, 16px) * 3)',
             },
             colors: {
                 border: "hsl(var(--border))",

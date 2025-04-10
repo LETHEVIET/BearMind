@@ -33,7 +33,7 @@ export const TabDisplay = ({
       {isCurrentTab ? (
         <>
           <span
-            className={`truncate max-w-[80px] ${
+            className={`truncate max-w-[80px] text-foreground ${
               !useCurrentTab ? "line-through italic" : ""
             }`}
           >
