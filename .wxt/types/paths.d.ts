@@ -3,15 +3,19 @@ import "wxt/browser";
 
 declare module "wxt/browser" {
   export type PublicPath =
-    | "/_icon/128.png"
-    | "/_icon/16.png"
-    | "/_icon/32.png"
-    | "/_icon/48.png"
-    | "/_icon/96.png"
+    | "/"
     | "/_locales/en/messages.json"
     | "/_locales/vi/messages.json"
     | "/background.js"
     | "/content-scripts/content.js"
+    | "/icons/128.png"
+    | "/icons/128.png"
+    | "/icons/16.png"
+    | "/icons/16.png"
+    | "/icons/32.png"
+    | "/icons/32.png"
+    | "/icons/48.png"
+    | "/icons/48.png"
     | "/polar-bear-3-svgrepo-com.svg"
     | "/popup-bak.html"
     | "/sidebar.js"
@@ -20,7 +24,7 @@ declare module "wxt/browser" {
     | "/wxt.svg"
     | "/zsm.jpg"
   type HtmlPublicPath = Extract<PublicPath, `${string}.html`>
-  export interface WxtRuntime extends Runtime.Static {
+  export interface WxtRuntime {
     getURL(path: PublicPath): string;
     getURL(path: `${HtmlPublicPath}${string}`): string;
   }

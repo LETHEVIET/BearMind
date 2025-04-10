@@ -69,7 +69,7 @@ const MemoizedMarkdownBlock = memo(
           
           blockquote: ({ children }) => <blockquote className="border-l-4 border-border pl-4 py-1 my-2 italic bg-muted text-foreground">{children}</blockquote>,
           
-          a: ({ href, children }) => <a href={href} className="text-accent-foreground hover:underline">{children}</a>,
+          a: ({ href, children }) => <a href={href} className="text-accent hover:underline">{children}</a>,
           
           hr: () => <hr className="my-4 border-border" />,
           

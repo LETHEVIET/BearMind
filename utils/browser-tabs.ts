@@ -1,3 +1,5 @@
+import { debounce } from 'lodash';
+
 export interface BrowserTab {
   id: number;
   title: string;
@@ -14,7 +16,6 @@ export interface BrowserTabsResult {
 export type TabChangeCallback = (result: BrowserTabsResult) => void;
 export type HighlightChangeCallback = (tabId: number, hasHighlight: boolean, highlightedText: string) => void;
 const highlightChangeListeners: Set<HighlightChangeCallback> = new Set();
-
 
 // Store for active event listeners
 const tabChangeListeners: Set<TabChangeCallback> = new Set();
@@ -205,10 +206,32 @@ function removeTabListeners() {
  * @returns Promise with the highlighted text, or empty string if none
  */
 export async function getTabHighlightedText(tabId: number): Promise<string> {
-  // Script to execute in the tab that gets any highlighted text
+  // More robust script to execute in the tab that gets any highlighted text
   const getSelectionScript = `
     (function() {
-      return window.getSelection().toString();
+      // More robust selection getting that handles different contexts
+      try {
+        // Get selection from the main window
+        let selection = window.getSelection();
+        let text = selection ? selection.toString() : "";
+        
+        // If no text selected, try getting from active elements (like inputs)
+        if (!text && document.activeElement) {
+          const el = document.activeElement;
+          if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+            const start = el.selectionStart;
+            const end = el.selectionEnd;
+            if (start !== null && end !== null && start !== end) {
+              text = el.value.substring(start, end);
+            }
+          }
+        }
+        
+        return text;
+      } catch (e) {
+        console.error("Error getting selection:", e);
+        return "";
+      }
     })();
   `;
   
@@ -218,7 +241,30 @@ export async function getTabHighlightedText(tabId: number): Promise<string> {
       // Using Chrome extension API
       const results = await chrome.scripting.executeScript({
         target: { tabId },
-        func: () => window.getSelection()?.toString() || "",
+        func: () => {
+          try {
+            // Get selection from the main window
+            let selection = window.getSelection();
+            let text = selection ? selection.toString() : "";
+            
+            // If no text selected, try getting from active elements (like inputs)
+            if (!text && document.activeElement) {
+              const el = document.activeElement;
+              if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+                const start = el.selectionStart;
+                const end = el.selectionEnd;
+                if (start !== null && end !== null && start !== end) {
+                  text = el.value.substring(start, end);
+                }
+              }
+            }
+            
+            return text;
+          } catch (e) {
+            console.error("Error getting selection:", e);
+            return "";
+          }
+        },
       });
       return results[0]?.result || "";
     } catch (error) {
@@ -269,43 +315,77 @@ export function subscribeToHighlightChanges(callback: HighlightChangeCallback): 
 }
 
 // Store for current highlight state and the interval ID
-let highlightState: Record<number, boolean> = {};
+let highlightState: Record<number, {hasHighlight: boolean, text: string}> = {};
 let highlightMonitorIntervalId: NodeJS.Timeout | null = null;
+let activeTabIntervalId: NodeJS.Timeout | null = null;
 
 /**
  * Set up monitoring for text highlighting in tabs
  */
 function setupHighlightMonitoring() {
-  // Clear any existing interval
+  // Clear any existing intervals
   if (highlightMonitorIntervalId) {
     clearInterval(highlightMonitorIntervalId);
+  }
+  
+  if (activeTabIntervalId) {
+    clearInterval(activeTabIntervalId);
   }
   
   // Initialize with empty state
   highlightState = {};
   
+  // Set up an interval to check for highlighted text in active tab more frequently
+  activeTabIntervalId = setInterval(async () => {
+    // Get active tab
+    const { currentTab } = await getBrowserTabs();
+    if (currentTab) {
+      try {
+        const highlightedText = await getTabHighlightedText(currentTab.id);
+        const hasHighlight = !!highlightedText;
+        
+        // Check if highlight state or text content changed
+        const currentState = highlightState[currentTab.id];
+        const stateChanged = !currentState || 
+                             currentState.hasHighlight !== hasHighlight ||
+                             (hasHighlight && currentState.text !== highlightedText);
+                             
+        if (stateChanged) {
+          highlightState[currentTab.id] = { hasHighlight, text: highlightedText };
+          notifyHighlightChangeListeners(currentTab.id, hasHighlight, highlightedText);
+        }
+      } catch (error) {
+        console.error(`Failed to check highlight for active tab:`, error);
+      }
+    }
+  }, 200); // Check active tab every 200ms
+  
   // Set up an interval to check for highlighted text in all tabs
   highlightMonitorIntervalId = setInterval(async () => {
     // Get all tabs
     const { currentTab, otherTabs } = await getBrowserTabs();
-    const allTabs = [...(currentTab ? [currentTab] : []), ...otherTabs];
     
-    // Check each tab for highlighted text
-    for (const tab of allTabs) {
+    // Only check other tabs (active tab is handled separately)
+    for (const tab of otherTabs) {
       try {
         const highlightedText = await getTabHighlightedText(tab.id);
         const hasHighlight = !!highlightedText;
         
-        // If the highlight state has changed, notify listeners
-        if (highlightState[tab.id] !== hasHighlight) {
-          highlightState[tab.id] = hasHighlight;
+        // Check if highlight state or text content changed
+        const currentState = highlightState[tab.id];
+        const stateChanged = !currentState || 
+                             currentState.hasHighlight !== hasHighlight ||
+                             (hasHighlight && currentState.text !== highlightedText);
+                             
+        if (stateChanged) {
+          highlightState[tab.id] = { hasHighlight, text: highlightedText };
           notifyHighlightChangeListeners(tab.id, hasHighlight, highlightedText);
         }
       } catch (error) {
         console.error(`Failed to check highlight for tab ${tab.id}:`, error);
       }
     }
-  }, 1000); // Check once per second
+  }, 1000); // Check other tabs once per second
 }
 
 /**
@@ -316,12 +396,16 @@ function removeHighlightMonitoring() {
     clearInterval(highlightMonitorIntervalId);
     highlightMonitorIntervalId = null;
   }
+  if (activeTabIntervalId) {
+    clearInterval(activeTabIntervalId);
+    activeTabIntervalId = null;
+  }
   highlightState = {};
 }
 
 /**
- * Notify all subscribers of highlight changes
+ * Notify all subscribers of highlight changes, debounced to prevent rapid-fire events
  */
-function notifyHighlightChangeListeners(tabId: number, hasHighlight: boolean, highlightedText: string) {
+const notifyHighlightChangeListeners = debounce((tabId: number, hasHighlight: boolean, highlightedText: string) => {
   highlightChangeListeners.forEach(callback => callback(tabId, hasHighlight, highlightedText));
-}
+}, 150); // Wait 150ms after last change before notifying

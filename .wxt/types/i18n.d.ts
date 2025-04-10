@@ -15,7 +15,7 @@ declare module "wxt/browser" {
   export interface WxtI18n extends I18n.Static {
     /**
      * The extension or app ID; you might use this string to construct URLs for resources inside the extension. Even unlocalized extensions can use this message.
-Note: You can't use this message in a manifest file.
+     * Note: You can't use this message in a manifest file.
      *
      * "<browser.runtime.id>"
      */
@@ -25,8 +25,6 @@ Note: You can't use this message in a manifest file.
       options?: GetMessageOptions,
     ): string;
     /**
-     * No message description.
-     *
      * "<browser.i18n.getUiLocale()>"
      */
     getMessage(
@@ -75,8 +73,6 @@ Note: You can't use this message in a manifest file.
       options?: GetMessageOptions,
     ): string;
     /**
-     * No message description.
-     *
      * "BearMind"
      */
     getMessage(
@@ -85,13 +81,16 @@ Note: You can't use this message in a manifest file.
       options?: GetMessageOptions,
     ): string;
     /**
-     * No message description.
-     *
      * "BearMind is a browser copilot extension.
 It can help you to consume internet content more efficiently."
      */
     getMessage(
       messageName: "extDescription",
+      substitutions?: string | string[],
+      options?: GetMessageOptions,
+    ): string;
+    getMessage(
+      messageName: "@@extension_id" | "@@ui_locale" | "@@bidi_dir" | "@@bidi_reversed_dir" | "@@bidi_start_edge" | "@@bidi_end_edge" | "extName" | "extDescription",
       substitutions?: string | string[],
       options?: GetMessageOptions,
     ): string;

@@ -12,6 +12,7 @@ export default defineConfig({
     },
     manifest: {
         permissions: ["activeTab", "scripting", "sidePanel", "storage", "tabs"],
+        host_permissions: ["<all_urls>"],  // Add permission to access all URLs
         action: {},
         name: 'BearMind',
         description: '__MSG_extDescription__',

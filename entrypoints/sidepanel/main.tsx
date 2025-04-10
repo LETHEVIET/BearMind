@@ -4,7 +4,10 @@ import App from './App.tsx';
 import './style.css';
 import { Toaster } from "@/components/ui/toaster.tsx";
 // Supports weights 100-900
-import '@fontsource-variable/geist-mono';
+// import '@fontsource-variable/geist-mono';
+// Supports weights 100-900
+import '@fontsource-variable/inter';
+
 import { AppContextProvider } from '@/components/AppContext';
 import { i18nConfig } from "@/components/i18nConfig.ts";
 import initTranslations from "@/components/i18n.ts";
