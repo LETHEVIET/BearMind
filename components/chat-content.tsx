@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, RefObject } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Assuming shadcn/ui setup
 import { Button } from "@/components/ui/button"; // Assuming shadcn/ui setup
 import { MemoizedMarkdown } from "./memoized-markdown";
@@ -16,50 +16,30 @@ import {
   Check,
 } from "lucide-react"; // Added icons
 import { TabDisplayWithHover } from "./tab-display-with-hover";
+import { ChatHistory, UserMessage, AssistantMessage, isAssistantMessage} from "@/entrypoints/sidepanel/types";
 
-// Updated component to display selected tabs with detailed information
-const SelectedTabsTag = ({ tabs }) => {
-  const [expanded, setExpanded] = useState(false);
+// Interface for the ChatContent component
+export interface ChatContentProps {
+  chatHistory: ChatHistory;
+  bottomRef: RefObject<HTMLDivElement>;
+  onDeleteMessage: (messageId: string) => void;
+  onRegenerateMessage: (messageId: string) => void;
+}
 
-  if (!tabs || tabs.length === 0) return null;
+// Interface for the ChatMessage component
+interface ChatMessageProps {
+  messageData: UserMessage | AssistantMessage;
+  onDelete: (messageId: string) => void;
+  onRegenerate: (messageId: string) => void;
+}
 
-  return (
-    <div className="mt-2 w-full">
-      <div
-        className="inline-flex items-center gap-1.5 border rounded-xl px-2 py-1 text-xs font-medium mr-2 cursor-pointer"
-        onClick={() => setExpanded(!expanded)}
-      >
-        <Globe className="h-3 w-3" />
-        <span>
-          {tabs.length} tab{tabs.length !== 1 ? "s" : ""} selected
-        </span>
-        {expanded ? (
-          <ChevronUp className="h-3 w-3" />
-        ) : (
-          <ChevronDown className="h-3 w-3" />
-        )}
-      </div>
+// Interface for the ActionButtons component
+interface ActionButtonsProps {
+  onRegenerate: () => void;
+  message: string;
+}
 
-      {expanded && (
-        <div className="mt-2 pl-2 border-l-2 text-xs">
-          {tabs.map((tab, index) => (
-            <div key={index} className="mb-2 border p-2 rounded-md">
-              <div className="font-medium truncate">
-                {tab.title || "Unnamed Tab"}
-              </div>
-              <div className="text-muted-foreground flex items-center gap-1 truncate">
-                <ExternalLink className="h-3 w-3" />
-                <span className="truncate">{tab.url}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-const ActionButtons = ({ onRegenerate, message }) => {
+const ActionButtons = ({ onRegenerate, message }: ActionButtonsProps) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -94,7 +74,7 @@ const ActionButtons = ({ onRegenerate, message }) => {
   );
 };
 
-const renderStatusIndicator = (status) => {
+const renderStatusIndicator = (status: string) => {
   switch (status) {
     case "typing":
       return (
@@ -134,43 +114,32 @@ const renderStatusIndicator = (status) => {
   }
 };
 
-const renderAvatarContent = (avatarIcon, name) => {
-  if (!avatarIcon) {
-    return name.substring(0, 2).toUpperCase();
-  }
+// const renderAvatarContent = (avatarIcon, name) => {
+//   if (!avatarIcon) {
+//     return name.substring(0, 2).toUpperCase();
+//   }
 
-  if (typeof avatarIcon === "string") {
-    return avatarIcon;
-  }
+//   if (typeof avatarIcon === "string") {
+//     return avatarIcon;
+//   }
 
-  if (React.isValidElement(avatarIcon)) {
-    return React.cloneElement(avatarIcon, { className: "h-3 w-3" });
-  }
+//   if (React.isValidElement(avatarIcon)) {
+//     return React.cloneElement(avatarIcon, { className: "h-3 w-3" });
+//   }
 
-  return name.substring(0, 2).toUpperCase();
-};
+//   return name.substring(0, 2).toUpperCase();
+// };
 
-const getStatusAvatar = (status) => {
+const getStatusAvatar = (status: string) => {
   if (status === "reading") return "ʕ◉ᴥ◉ʔ";
   return "ʕ•ᴥ•ʔ";
 };
 
 // Unified chat message component for both user and assistant messages
-const ChatMessage = ({ messageData, onDelete, onRegenerate }) => {
-  const {
-    sender,
-    name,
-    avatarIcon,
-    message,
-    tabs,
-    highlightedText,
-    currentTabId,
-    status,
-    id,
-  } = messageData;
+const ChatMessage = ({ messageData, onDelete, onRegenerate }: ChatMessageProps) => {
 
-  const isAssistant = sender === "assistant";
-
+  const isAssistant = isAssistantMessage(messageData);
+  const { id, name, message, avatarIcon, status, usedTabs } = messageData;
   return (
     <div className="flex flex-col mb-2">
       <div className="flex justify-between gap-2 mt-2 items-center">
@@ -208,11 +177,11 @@ const ChatMessage = ({ messageData, onDelete, onRegenerate }) => {
       {isAssistant && status === "reading" && (
         <div>
           <div className="flex flex-wrap border-l-2 pl-3 text-sm gap-1 text-muted-foreground">
-            {tabs &&
-              tabs.length > 0 &&
-              [...tabs].map((tab) => (
-                <div key={tab.id}>
-                  <TabDisplayWithHover tab={tab} />
+            {usedTabs &&
+              usedTabs.length > 0 &&
+              usedTabs.map((tabId) => (
+                <div key={tabId}>
+                  <TabDisplayWithHover tabId={tabId} />
                 </div>
               ))}
           </div>
@@ -220,47 +189,47 @@ const ChatMessage = ({ messageData, onDelete, onRegenerate }) => {
       )}
 
       <div className="prose prose-sm prose-invert max-w-none">
-        <MemoizedMarkdown content={message} id={id} tabs={tabs} />
+        <MemoizedMarkdown content={message} id={id} />
       </div>
 
       {!isAssistant && (
         <div className="flex flex-wrap border-l-2 pl-3 text-sm gap-1 text-muted-foreground">
-          {tabs &&
-            tabs.length > 0 &&
-            [...tabs]
+          {usedTabs &&
+            usedTabs.length > 0 &&
+            [...usedTabs]
               .sort((a, b) => {
                 // First prioritize the current tab
-                if (a.id && a.id.toString() === currentTabId?.toString())
+                if (a && a.toString() === messageData.currentTabId?.toString())
                   return -1;
-                if (b.id && b.id.toString() === currentTabId?.toString())
+                if (b && b.toString() === messageData.currentTabId?.toString())
                   return 1;
 
                 // Then prioritize tabs with highlights
                 const aHasHighlight =
-                  highlightedText && a.id && highlightedText[a.id.toString()];
+                  messageData.highlightedText && a && messageData.highlightedText[a];
                 const bHasHighlight =
-                  highlightedText && b.id && highlightedText[b.id.toString()];
+                  messageData.highlightedText && b && messageData.highlightedText[b];
                 if (aHasHighlight && !bHasHighlight) return -1;
                 if (!aHasHighlight && bHasHighlight) return 1;
                 return 0;
               })
-              .map((tab) => (
+              .map((tabId) => (
                 <div
                   className={`${
-                    highlightedText &&
-                    tab.id &&
-                    highlightedText[tab.id.toString()] !== ""
+                    messageData.highlightedText &&
+                    tabId &&
+                    messageData.highlightedText[tabId] !== ""
                       ? "w-full"
                       : ""
                   }`}
-                  key={tab.id}
+                  key={tabId}
                 >
                   <TabDisplayWithHover
-                    tab={tab}
+                    tabId={tabId}
                     hasHighlight={
-                      highlightedText && tab.id
-                        ? highlightedText[tab.id.toString()]
-                        : null
+                      messageData.highlightedText && tabId
+                        ? messageData.highlightedText[tabId]
+                        : ""
                     }
                   />
                 </div>
@@ -279,7 +248,8 @@ const StreamingAnimation = () => (
   </div>
 );
 
-const ChatContent = ({ chatHistory, bottomRef, onDeleteMessage, onRegenerateMessage }) => {
+const ChatContent = ({ 
+  chatHistory, bottomRef, onDeleteMessage, onRegenerateMessage }: ChatContentProps) => {
   return (
     <div className="flex flex-col bg-background p-4">
       {chatHistory.map((messageData) => (

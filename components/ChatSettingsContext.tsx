@@ -1,6 +1,7 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect } from "react";
 import { GeminiModel, getModelById } from "@/utils/gemini-models";
 import { browser } from "wxt/browser";
+import { BrowserTab } from "@/utils/browser-tabs";
 
 // Define the tab reader type
 export interface TabReader {
@@ -25,18 +26,22 @@ export interface ChatSettings {
   // Model settings
   selectedModel: GeminiModel;
   selectedTabReader: TabReader;
-  
+
   // API Key settings
   apiKey: string;
-  
+
   // Tab settings
   useCurrentTab: boolean;
   selectedTabs: number[];
   highlightedTabs: Record<number, string>;
-  
+
+  // Tab management
+  tabs: Record<number, BrowserTab>;
+  currentTabId: number | null;
+
   // Search settings
   useSearch: boolean;
-  
+
   // State setters
   setSelectedModel: (model: GeminiModel) => void;
   setSelectedTabReader: (reader: TabReader) => void;
@@ -45,7 +50,9 @@ export interface ChatSettings {
   setSelectedTabs: (tabs: number[]) => void;
   setHighlightedTabs: (tabs: Record<number, string>) => void;
   setUseSearch: (use: boolean) => void;
-  
+  setTabs: (tabs: Record<number, BrowserTab>) => void;
+  setCurrentTabId: (tabId: number | null) => void;
+
   // Utility functions
   addSelectedTab: (tabId: number) => void;
   removeSelectedTab: (tabId: number) => void;
@@ -57,7 +64,11 @@ export interface ChatSettings {
 const ChatSettingsContext = createContext<ChatSettings | undefined>(undefined);
 
 // Create a provider component
-export const ChatSettingsProvider = ({ children }: { children: React.ReactNode }) => {
+export const ChatSettingsProvider = ({
+  children,
+}: {
+  children: React.ReactNode;
+}) => {
   // Initialize state for all settings
   const [selectedModel, setSelectedModel] = useState<GeminiModel>(
     getModelById("gemini-2.0-flash-exp") || {
@@ -66,39 +77,50 @@ export const ChatSettingsProvider = ({ children }: { children: React.ReactNode }
       inputs: "",
       outputs: "",
       description: "",
-      rateLimits: { rpm: 0, tpm: 0, rpd: 0 }
+      rateLimits: { rpm: 0, tpm: 0, rpd: 0 },
     }
   );
-  const [selectedTabReader, setSelectedTabReader] = useState<TabReader>(tabReaders[0]);
+  const [selectedTabReader, setSelectedTabReader] = useState<TabReader>(
+    tabReaders[0]
+  );
   const [apiKey, setApiKey] = useState<string>("");
   const [useCurrentTab, setUseCurrentTab] = useState<boolean>(true);
   const [selectedTabs, setSelectedTabs] = useState<number[]>([]);
-  const [highlightedTabs, setHighlightedTabs] = useState<Record<number, string>>({});
+  const [highlightedTabs, setHighlightedTabs] = useState<
+    Record<number, string>
+  >({});
   const [useSearch, setUseSearch] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [tabs, setTabs] = useState<Record<number, BrowserTab>>({});
+  const [currentTabId, setCurrentTabId] = useState<number | null>(null);
 
   // Initialize settings from local storage if available
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const data = await browser.storage.local.get(['chatSettings', 'geminiApiKey']);
-        console.log('Loaded settings:', data);
-        
+        const data = await browser.storage.local.get([
+          "chatSettings",
+          "geminiApiKey",
+        ]);
+        console.log("Loaded settings:", data);
+
         if (data.chatSettings) {
           const settings = JSON.parse(data.chatSettings);
-          
+
           // Only set values that exist in storage to avoid overriding defaults
           if (settings.selectedModelId) {
             const model = getModelById(settings.selectedModelId);
             if (model) setSelectedModel(model);
           }
-          
+
           if (settings.selectedTabReaderId) {
-            const reader = tabReaders.find(r => r.id === settings.selectedTabReaderId);
+            const reader = tabReaders.find(
+              (r) => r.id === settings.selectedTabReaderId
+            );
             if (reader) setSelectedTabReader(reader);
           }
-          
-          if (settings.hasOwnProperty('useSearch')) {
+
+          if (settings.hasOwnProperty("useSearch")) {
             setUseSearch(settings.useSearch);
           }
         }
@@ -108,56 +130,48 @@ export const ChatSettingsProvider = ({ children }: { children: React.ReactNode }
           setApiKey(data.geminiApiKey);
         }
       } catch (error) {
-        console.error('Error loading chat settings:', error);
+        console.error("Error loading chat settings:", error);
       } finally {
         setIsLoading(false);
       }
     };
-    
+
     loadSettings();
   }, []);
 
-  // Save settings to local storage when they change
+  // Save all settings to local storage when they change
   useEffect(() => {
     if (isLoading) return; // Prevent saving while loading
 
-    const saveSettings = async () => {
+    const saveAllSettings = async () => {
       try {
+        // Save general settings
         const settingsToSave = {
           selectedModelId: selectedModel.id,
           selectedTabReaderId: selectedTabReader.id,
           useSearch: useSearch,
           // Removed useCurrentTab, selectedTabs, and highlightedTabs from being saved
         };
-        console.log('settingsToSave', settingsToSave);
-        
-        await browser.storage.local.set({
-          chatSettings: JSON.stringify(settingsToSave)
-        });
-      } catch (error) {
-        console.error('Error saving chat settings:', error);
-      }
-    };
-    
-    saveSettings();
-  }, [selectedModel, selectedTabReader, useSearch, isLoading]);
+        console.log("settingsToSave", settingsToSave);
 
-  // Save API key to local storage when it changes
-  useEffect(() => {
-    if (isLoading) return; // Prevent saving while loading
+        const storageUpdates: Record<string, any> = {
+          chatSettings: JSON.stringify(settingsToSave),
+        };
 
-    const saveApiKey = async () => {
-      try {
-        if (apiKey) { // Only save if there is an API key to save
-          await browser.storage.local.set({ geminiApiKey: apiKey });
+        // Include API key in storage updates if it exists
+        if (apiKey) {
+          storageUpdates.geminiApiKey = apiKey;
         }
+
+        // Save everything in one operation
+        await browser.storage.local.set(storageUpdates);
       } catch (error) {
-        console.error('Error saving API key:', error);
+        console.error("Error saving settings:", error);
       }
     };
-    
-    saveApiKey();
-  }, [apiKey, isLoading]);
+
+    saveAllSettings();
+  }, [selectedModel, selectedTabReader, useSearch, apiKey, isLoading]);
 
   // Helper functions for tab management
   const addSelectedTab = (tabId: number) => {
@@ -167,7 +181,7 @@ export const ChatSettingsProvider = ({ children }: { children: React.ReactNode }
   };
 
   const removeSelectedTab = (tabId: number) => {
-    setSelectedTabs(selectedTabs.filter(id => id !== tabId));
+    setSelectedTabs(selectedTabs.filter((id) => id !== tabId));
   };
 
   const toggleTabSelection = (tabId: number) => {
@@ -179,9 +193,9 @@ export const ChatSettingsProvider = ({ children }: { children: React.ReactNode }
   };
 
   const updateHighlightedTab = (tabId: number, highlightedText: string) => {
-    setHighlightedTabs(prev => ({
+    setHighlightedTabs((prev) => ({
       ...prev,
-      [tabId]: highlightedText
+      [tabId]: highlightedText,
     }));
   };
 
@@ -194,6 +208,8 @@ export const ChatSettingsProvider = ({ children }: { children: React.ReactNode }
     selectedTabs,
     highlightedTabs,
     useSearch,
+    tabs,
+    currentTabId,
     setSelectedModel,
     setSelectedTabReader,
     setApiKey,
@@ -204,7 +220,9 @@ export const ChatSettingsProvider = ({ children }: { children: React.ReactNode }
     addSelectedTab,
     removeSelectedTab,
     toggleTabSelection,
-    updateHighlightedTab
+    updateHighlightedTab,
+    setTabs,
+    setCurrentTabId,
   };
 
   return (
@@ -218,7 +236,9 @@ export const ChatSettingsProvider = ({ children }: { children: React.ReactNode }
 export const useChatSettings = (): ChatSettings => {
   const context = useContext(ChatSettingsContext);
   if (context === undefined) {
-    throw new Error('useChatSettings must be used within a ChatSettingsProvider');
+    throw new Error(
+      "useChatSettings must be used within a ChatSettingsProvider"
+    );
   }
   return context;
 };

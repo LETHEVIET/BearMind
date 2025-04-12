@@ -1,19 +1,20 @@
 import { Globe } from "lucide-react";
-import { BrowserTab } from "@/utils/browser-tabs";
 import { useState } from "react";
 
 // TabDisplayWithHover component - simpler version with hover for URL
 export interface TabDisplayWithHoverProps {
-  tab: BrowserTab;
+  tabId: number;
   hasHighlight?: string;
 }
 
 export const TabDisplayWithHover = ({
-  tab,
+  tabId,
   hasHighlight = "",
 }: TabDisplayWithHoverProps) => {
   const [isHovering, setIsHovering] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const { tabs } = useChatSettings();
+  const tab = tabs[tabId];
 
   // Approximate number of characters for 3 lines (adjust as needed)
   const shouldTruncate = hasHighlight.length > 180;

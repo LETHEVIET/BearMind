@@ -31,12 +31,11 @@ import {
 } from "@/utils/browser-tabs";
 import { geminiModels, GeminiModel } from "@/utils/gemini-models";
 import { TabDisplay } from "@/components/tab-display";
-import { useChatSettings, tabReaders } from "@/components/ChatSettingsContext";
-import { AnimatePresence, motion } from "framer-motion";
+import { useChatSettings } from "@/components/ChatSettingsContext";
 import { SearchToggleButton } from "@/components/search-toggle-button";
 
-import { cn } from "@/components/lib/utils";
 import { DEFAULT_ACTIONS } from "@/utils/action-button";
+import { BrowserTabsResult } from '../utils/browser-tabs';
 
 const actions = DEFAULT_ACTIONS;
 
@@ -45,8 +44,7 @@ export default function ChatInput({
 }: {
   onSubmit?: (data: {
     text: string;
-    tabs: BrowserTab[];
-    model: string;
+    usedTabs: number[];
     highlightedText: Record<number, string>;
     currentTabId: number | null;
   }) => void;
@@ -59,6 +57,8 @@ export default function ChatInput({
     selectedTabs,
     highlightedTabs,
     useSearch,
+    tabs,
+    currentTabId,
     setSelectedModel,
     setSelectedTabReader,
     setUseCurrentTab,
@@ -66,13 +66,15 @@ export default function ChatInput({
     toggleTabSelection,
     removeSelectedTab,
     updateHighlightedTab,
+    setTabs,
+    setCurrentTabId
   } = useChatSettings();
 
   // Local state for query and browser tabs
   const [query, setQuery] = useState("");
-  const [tabs, setTabs] = useState<BrowserTab[]>([]);
-  const [currentTab, setCurrentTab] = useState<BrowserTab | null>(null);
-  const textareaRef = useRef(null);
+  // const [tabs, setTabs] = useState<BrowserTab[]>([]);
+  // const [currentTab, setCurrentTab] = useState<BrowserTab | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
 
@@ -96,14 +98,14 @@ export default function ChatInput({
   // Function to fetch browser tabs
   const handleFetchTabs = async () => {
     const fetchedTabs = await getBrowserTabs();
-    setTabs(fetchedTabs.otherTabs);
-    setCurrentTab(fetchedTabs.currentTab);
+    setTabs(fetchedTabs.tabs);
+    setCurrentTabId(fetchedTabs.currentTabId);
   };
 
   // Function to handle tab changes
-  const handleTabChange = (tabsResult) => {
-    setTabs(tabsResult.otherTabs);
-    setCurrentTab(tabsResult.currentTab);
+  const handleTabChange = (tabsResult: BrowserTabsResult) => {
+    setTabs(tabsResult.tabs);
+    setCurrentTabId(tabsResult.currentTabId);
   };
 
   // Function to handle highlight changes
@@ -122,12 +124,12 @@ export default function ChatInput({
 
     // Initialize highlighted tabs state
     const initHighlightedTabs = async () => {
-      if (currentTab) {
-        const highlightedText = await getTabHighlightedText(currentTab.id);
-        updateHighlightedTab(currentTab.id, highlightedText);
+      if (currentTabId) {
+        const highlightedText = await getTabHighlightedText(currentTabId);
+        updateHighlightedTab(currentTabId, highlightedText);
       }
 
-      for (const tab of tabs) {
+      for (const tab of Object.values(tabs)) {
         const highlightedText = await getTabHighlightedText(tab.id);
         updateHighlightedTab(tab.id, highlightedText);
       }
@@ -155,50 +157,45 @@ export default function ChatInput({
     adjustTextareaHeight();
   }, [query]);
 
-  const handleTextareaChange = (e) => {
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setQuery(e.target.value);
   };
 
   const handleModelSelect = (model: GeminiModel) => {
     setSelectedModel(model);
   };
-
-  const handleTabReaderSelect = (reader) => {
-    setSelectedTabReader(reader);
-  };
-
+  
   const handleSubmit = () => {
     if (!query.trim()) return; // Don't submit empty queries
 
     // Collect selected tab objects instead of just IDs
-    const tabsToSubmit: BrowserTab[] = [];
+    const tabsToSubmit: number[] = [];
 
     // Add selected tabs
-    tabs.forEach((tab) => {
+    Object.values(tabs).forEach((tab) => {
       if (selectedTabs.includes(tab.id)) {
-        tabsToSubmit.push(tab);
+        tabsToSubmit.push(tab.id);
       }
     });
 
     // Add current tab if it's being used
-    if (currentTab && useCurrentTab) {
-      tabsToSubmit.push(currentTab);
+    if (currentTabId && useCurrentTab) {
+      tabsToSubmit.push(currentTabId);
     }
 
     // Call the onSubmit prop with the query and selected tabs
     onSubmit?.({
-      model: selectedModel.id,
       text: query.trim(),
-      tabs: tabsToSubmit,
+      usedTabs: tabsToSubmit,
       highlightedText: highlightedTabs,
-      currentTabId: currentTab?.id || null,
+      currentTabId: currentTabId || null,
     });
 
     // Clear the input after submission
     setQuery("");
   };
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Submit when Enter is pressed without Shift
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault(); // Prevent new line
@@ -208,7 +205,7 @@ export default function ChatInput({
 
   // Get selected tab objects
   const getSelectedTabObjects = () => {
-    return tabs.filter((tab) => selectedTabs.includes(tab.id));
+    return Object.values(tabs).filter((tab) => selectedTabs.includes(tab.id));
   };
 
   return (
@@ -264,8 +261,8 @@ export default function ChatInput({
               align="start"
               className="w-[300px] max-h-[400px] overflow-y-auto"
             >
-              {tabs.length > 0 ? (
-                tabs.map((tab) => (
+              {Object.values(tabs).length > 0 ? (
+                Object.values(tabs).map((tab) => (
                   <DropdownMenuItem
                     key={tab.id}
                     className="flex items-center gap-2 text-xs py-2"
@@ -294,13 +291,13 @@ export default function ChatInput({
           {/* </div> */}
 
           {/* <div className="flex items-center gap-2 py-1 flex-wrap"> */}
-          {currentTab && (
+          {currentTabId && (
             <TabDisplay
-              tab={currentTab}
+              tabId={currentTabId ?? 0}
               isCurrentTab={true}
               useCurrentTab={useCurrentTab}
               onToggleVisibility={() => setUseCurrentTab(!useCurrentTab)}
-              hasHighlight={highlightedTabs[currentTab.id]}
+              hasHighlight={currentTabId ? highlightedTabs[currentTabId] : ""}
             />
           )}
 
@@ -308,7 +305,7 @@ export default function ChatInput({
           {getSelectedTabObjects().map((tab) => (
             <TabDisplay
               key={tab.id}
-              tab={tab}
+              tabId={tab.id}
               onRemove={() => removeSelectedTab(tab.id)}
               hasHighlight={highlightedTabs[tab.id]}
             />

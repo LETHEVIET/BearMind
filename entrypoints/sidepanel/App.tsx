@@ -1,39 +1,36 @@
 import React, { useEffect, useRef, useState } from "react";
 import "./App.module.css";
 import "../../assets/main.css";
-import { browser } from "wxt/browser";
-import ExtMessage, { MessageType } from "@/entrypoints/types.ts";
 import { useTranslation } from "react-i18next";
 import { useAppContext } from "@/components/AppContext";
 import QuoteFinder from "@/components/quote-finder";
+import { ChatMessage, ChatHistory, UserMessage, AssistantMessage, MessageStatus } from "./types";
 
 import ChatInput from "@/components/chat-input";
 import { User } from "lucide-react";
 import { ChatContent } from "@/components/chat-content";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SettingsModal } from "@/components/settings-modal";
-import { ChatSettingsProvider } from "@/components/ChatSettingsContext";
+import { ChatSettingsProvider, useChatSettings } from "@/components/ChatSettingsContext";
 
-import { BrowserTab } from "@/utils/browser-tabs";
 import { 
   readTabs, 
   generateAIResponse,
-  GoogleAI 
 } from "@/utils/llm-message-formatter";
-import { TabReaderPanel } from "@/components/tab-reader-panel";
 import { DotBackground } from "@/components/dots-background";
+import { use } from "i18next";
 
-// Initial chat history (unchanged)
-const initialChatHistory = [];
+// Initial chat history
+const initialChatHistory: ChatHistory = [];
 
 // Assistant information constant
 const ASSISTANT_INFO = {
-  sender: "assistant",
+  sender: "assistant" as const,
   name: "BearMind",
-  avatarIcon: "ʕ•ᴥ•ʔ",
+  avatarIcon: "",
 };
 
-// Generate unique message ID (unchanged)
+// Generate unique message ID
 const generateMessageId = () => {
   const timestamp = Date.now();
   const randomPart = Math.random().toString(36).substring(2, 4);
@@ -44,31 +41,20 @@ console.log("Content script loaded");
 
 const App = () => {
   const { ui, session, resetSession } = useAppContext();
+  const { tabs, selectedModel, useSearch } = useChatSettings();
   const { t } = useTranslation();
   
-  const [chatHistory, setChatHistory] = useState(initialChatHistory);
+  const [chatHistory, setChatHistory] = useState<ChatHistory>(initialChatHistory);
   const [isLoading, setIsLoading] = useState(false);
-  const scrollAreaRef = useRef(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   // Add state for markdownContents
   const [markdownContents, setMarkdownContents] = useState<Record<string, string>>({});
-  // Add state for Google AI instance
-  const [googleAIInstance, setGoogleAIInstance] = useState<GoogleAI | null>(null);
   // Add state to toggle quote finder
   const [showQuoteFinder, setShowQuoteFinder] = useState(false);
 
   // Add a ref for the bottom of the chat content
-  const bottomRef = useRef(null);
-  
-  // Initialize Google AI instance when API key changes
-  useEffect(() => {
-    // Create a new GoogleAI instance with the current API key
-    console.log('Creating GoogleAI instance with API key:', session.apiKey);
-    const newGoogleAIInstance = new GoogleAI(session.apiKey);
-    setGoogleAIInstance(newGoogleAIInstance);
-    
-    console.log("GoogleAI instance created with API key:", session.apiKey ? "API key provided" : "Using storage/fallback");
-  }, [session.apiKey]);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   // Reset chat history function
   const resetChat = () => {
@@ -78,7 +64,7 @@ const App = () => {
   };
 
   // Function to delete a message from chat history
-  const deleteMessage = (messageId) => {
+  const deleteMessage = (messageId: string) => {
     setChatHistory((prevHistory) => {
       // Find the index of the message to delete
       const messageIndex = prevHistory.findIndex((msg) => msg.id === messageId);
@@ -106,7 +92,7 @@ const App = () => {
   };
 
   // Function to regenerate a response when the refresh button is clicked
-  const regenerateMessage = async (messageId) => {
+  const regenerateMessage = async (messageId: string) => {
     // Find the assistant message to regenerate
     const assistantMessageIndex = chatHistory.findIndex(msg => msg.id === messageId);
     if (assistantMessageIndex === -1 || chatHistory[assistantMessageIndex].sender !== "assistant") {
@@ -127,7 +113,7 @@ const App = () => {
     }
 
     // Get the user message data
-    const userMessage = chatHistory[userMessageIndex];
+    const userMessage = chatHistory[userMessageIndex] as UserMessage;
 
     // Delete the assistant message and all messages after it
     setChatHistory(prevHistory => prevHistory.slice(0, userMessageIndex));
@@ -135,10 +121,9 @@ const App = () => {
     // Regenerate the response using the user message data
     const data = {
       text: userMessage.message,
-      tabs: userMessage.tabs || [],
-      model: userMessage.model || session.selectedModel.id,
+      usedTabs: userMessage.usedTabs || [],
       highlightedText: userMessage.highlightedText || {},
-      currentTabId: userMessage.currentTabId
+      currentTabId: userMessage.currentTabId || null
     };
 
     // Use the existing handleChatSubmit flow to regenerate the response
@@ -159,7 +144,7 @@ const App = () => {
     }
   }, [chatHistory, shouldAutoScroll]);
 
-  // Scroll event listener (unchanged)
+  // Scroll event listener
   useEffect(() => {
     const scrollContainer = scrollAreaRef.current;
 
@@ -190,31 +175,31 @@ const App = () => {
 
   // Apply font size based on UI settings
   useEffect(() => {
-    // Set CSS variable for base font size instead of directly setting fontSize
-    document.documentElement.style.setProperty(
-      '--base-font-size',
-      ui.fontSize === 'small' ? '14px' : 
-      ui.fontSize === 'large' ? '18px' : '16px'
-    );
+    // Set CSS variable for base font size
+    let fontSize = '16px'; // default
+    if (ui.fontSize === 'small') {
+      fontSize = '14px';
+    } else if (ui.fontSize === 'large') {
+      fontSize = '18px';
+    }
+    document.documentElement.style.setProperty('--base-font-size', fontSize);
   }, [ui.fontSize]);
 
-  // Handle chat submission (updated to use the AppContext)
+  // Handle chat submission
   const handleChatSubmit = async (data: {
     text: string;
-    tabs: BrowserTab[];
-    model: string;
+    usedTabs: number[];
     highlightedText: Record<number, string>;
-    currentTabId: number;
-    useMock?: boolean; // Add this optional parameter
+    currentTabId: number | null;
+    useMock?: boolean;
   }) => {
-    const newUserMessage = {
+    const newUserMessage: UserMessage = {
       id: generateMessageId(),
       sender: "user",
       name: "Lê Thế Việt",
       avatarIcon: <User className="h-5 w-5" />,
       message: data.text,
-      tabs: data.tabs,
-      model: data.model,
+      usedTabs: data.usedTabs,
       highlightedText: data.highlightedText,
       currentTabId: data.currentTabId,
     };
@@ -222,12 +207,14 @@ const App = () => {
     setChatHistory((prevHistory) => [...prevHistory, newUserMessage]);
 
     const assistantMessageId = generateMessageId();
-    const loadingMessage = {
+    const loadingMessage: AssistantMessage = {
       id: assistantMessageId,
       ...ASSISTANT_INFO,
       message: "",
-      status: "streaming",
-      tabs: data.tabs,
+      status: "streaming" as MessageStatus,
+      usedTabs: data.usedTabs,
+      readingTabs: [],
+      tabs: [],
     };
 
     setChatHistory((prevHistory) => [...prevHistory, loadingMessage]);
@@ -235,29 +222,29 @@ const App = () => {
     setShouldAutoScroll(true);
 
     // Process tabs using the utility function
-    const updateTabProcessingStatus = (processedTab: BrowserTab) => {
-      setChatHistory((prevHistory) =>
-        prevHistory.map((msg) =>
-          msg.id === assistantMessageId
-            ? {
-                ...msg,
-                status: "reading",
-                message: "",
-                readingTabs: prevHistory
-                  .find((m) => m.id === assistantMessageId)
-                  ?.tabs?.concat(processedTab) || [processedTab],
-              }
-            : msg
-        )
-      );
+    const updateTabProcessingStatus = (processedTab: number) => {
+      setChatHistory((prevHistory) => {
+        return prevHistory.map((msg) => {
+          if (msg.id === assistantMessageId) {
+            const assistantMsg = msg as AssistantMessage;
+            return {
+              ...assistantMsg,
+              status: "reading" as MessageStatus,
+              message: "",
+              readingTabs: [...(assistantMsg.readingTabs || []), processedTab]
+            };
+          }
+          return msg;
+        });
+      });
     };
 
     try {
       // First, process any tabs that need to be read
       let newMarkdownContents: Record<string, string> = {};
-      if (data.tabs && data.tabs.length > 0) {
+      if (data.usedTabs && data.usedTabs.length > 0) {
         newMarkdownContents = await readTabs(
-          data.tabs, 
+          data.usedTabs, 
           session.convertedTabIds, 
           updateTabProcessingStatus,
           session.apiKey // Pass the API key from context
@@ -278,61 +265,75 @@ const App = () => {
       }
 
       // Change status back to streaming before generating response
-      setChatHistory((prevHistory) =>
-        prevHistory.map((msg) =>
-          msg.id === assistantMessageId
-            ? { ...msg, status: "streaming", message: "" }
-            : msg
-        )
-      );
+      setChatHistory((prevHistory) => {
+        return prevHistory.map((msg) => {
+          if (msg.id === assistantMessageId) {
+            return { 
+              ...msg, 
+              status: "streaming" as MessageStatus, 
+              message: "" 
+            };
+          }
+          return msg;
+        });
+      });
 
       // Use the utility function to generate AI response
       const updateStreamText = (text: string) => {
-        setChatHistory((prevHistory) =>
-          prevHistory.map((msg) =>
-            msg.id === assistantMessageId
-              ? { ...msg, message: text, status: "streaming" }
-              : msg
-          )
-        );
+        setChatHistory((prevHistory) => {
+          return prevHistory.map((msg) => {
+            if (msg.id === assistantMessageId) {
+              return { 
+                ...msg, 
+                message: text, 
+                status: "streaming" as MessageStatus 
+              };
+            }
+            return msg;
+          });
+        });
         scrollToBottom();
       };
 
       const fullText = await generateAIResponse(
         data,
+        selectedModel.id,
+        useSearch,
+        tabs,
         chatHistory,
         {...markdownContents, ...newMarkdownContents}, // Use both existing and new markdown contents
         updateStreamText,
         session.apiKey // Pass the API key from context
       );
 
-      setChatHistory((prevHistory) =>
-        prevHistory.map((msg) =>
-          msg.id === assistantMessageId
-            ? {
-                ...msg,
-                message: fullText,
-                status: "done",
-              }
-            : msg
-        )
-      );
+      setChatHistory((prevHistory) => {
+        return prevHistory.map((msg) => {
+          if (msg.id === assistantMessageId) {
+            return {
+              ...msg,
+              message: fullText,
+              status: "done" as MessageStatus,
+            };
+          }
+          return msg;
+        });
+      });
     } catch (error) {
       console.error("Error generating AI response:", error);
-      const errorMessage = {
-        id: assistantMessageId,
-        ...ASSISTANT_INFO,
-        avatarIcon: "ʕ •ᴥ•ʔ", // Sad bear face for errors
-        message:
-          "Sorry, I encountered an error while generating a response. Please try again.",
-        status: "done",
-      };
-
-      setChatHistory((prevHistory) =>
-        prevHistory.map((msg) =>
-          msg.id === assistantMessageId ? errorMessage : msg
-        )
-      );
+      
+      setChatHistory((prevHistory) => {
+        return prevHistory.map((msg) => {
+          if (msg.id === assistantMessageId) {
+            return {
+              ...msg,
+              avatarIcon: "ʕ •ᴥ•ʔ", // Sad bear face for errors
+              message: "Sorry, I encountered an error while generating a response. Please try again.",
+              status: "done" as MessageStatus,
+            } as AssistantMessage;
+          }
+          return msg;
+        });
+      });
     } finally {
       setIsLoading(false);
     }

@@ -1,57 +1,15 @@
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createGoogleGenerativeAI, GoogleGenerativeAIProvider } from "@ai-sdk/google";
 import { generateText, streamText } from "ai";
 import { BrowserTab } from "./browser-tabs";
 import { readMarkdownPrompt } from "./prompts";
-import { CoreMessage, Message, TextStream } from "ai";
+import { CoreMessage, Message } from "ai";
 import { browser } from "wxt/browser";
 import { toast } from "../hooks/use-toast";
 
-// GoogleAI class to manage AI model creation and API keys
-export class GoogleAI {
-  private apiKey: string | (() => Promise<string>);
-  private defaultModel: string;
-
-  constructor(apiKey?: string, defaultModel = "gemini-2.0-flash-exp") {
-    this.defaultModel = defaultModel;
-
-    if (apiKey) {
-      this.apiKey = apiKey;
-    } else {
-      // Create a function that gets the API key from storage
-      this.apiKey = this.getApiKeyFromStorage;
-    }
-  }
-
-  // Method to get API key from storage
-  private getApiKeyFromStorage = async (): Promise<string> => {
-    try {
-      const data = await browser.storage.local.get(["geminiApiKey"]);
-      if (data.geminiApiKey) {
-        return data.geminiApiKey;
-      }
-      console.warn("No API key found in storage");
-      throw new Error(
-        "No API key found. Please add your Gemini API key in settings."
-      );
-    } catch (error) {
-      console.error("Error getting API key from storage:", error);
-      throw error;
-    }
-  };
-
-  // Method to create and return a Google AI model
-  public getModel(model?: string, options?: { [key: string]: any }) {
-    const modelToUse = model || this.defaultModel;
-    return createGoogleGenerativeAI({
-      apiKey: this.apiKey,
-      ...options,
-    })(modelToUse);
-  }
-
-  // Method to update the API key
-  public updateApiKey(newApiKey: string) {
-    this.apiKey = newApiKey;
-  }
+const getModel = (model: string, options?: { [key: string]: any }) => {
+  return createGoogleGenerativeAI({
+    ...options,
+  })(model);
 }
 
 // Function to read the content of a tab and convert it to markdown
@@ -89,11 +47,10 @@ export const readTab = async (
 
     if (!usingLlm) return markdown;
 
-    // Create GoogleAI instance for this operation
-    const googleAIInstance = new GoogleAI(apiKey);
-
     const { text } = await generateText({
-      model: googleAIInstance.getModel("gemini-2.0-flash-lite-preview-02-05"),
+      model: getModel("gemini-2.0-flash-lite-preview-02-05", {
+        apiKey: apiKey
+      }),
       system: "You are a helpful assistant name BearMind.",
       messages: readMarkdownPrompt(markdown) as CoreMessage[],
     });
@@ -107,28 +64,28 @@ export const readTab = async (
 
 // Function to process tabs and convert them to markdown
 export const readTabs = async (
-  tabs: BrowserTab[],
+  usedTabs: number[],
   convertedTabIds: number[],
-  onTabProcessed?: (processedTab: BrowserTab) => void,
+  onTabProcessed?: (processedTab: number) => void,
   apiKey?: string // Add API key parameter
 ): Promise<Record<number, string>> => {
   // Process new tabs that haven't been converted to markdown yet
   const markdownContents: Record<number, string> = {};
-  const processedTabs: BrowserTab[] = [];
+  const processedTabs: number[] = [];
 
   // Only process tabs that haven't been converted yet
-  for (const tab of tabs) {
-    if (!convertedTabIds.includes(tab.id)) {
+  for (const tabId of usedTabs) {
+    if (!convertedTabIds.includes(tabId)) {
       // Notify about tab being processed
       if (onTabProcessed) {
-        processedTabs.push(tab);
-        onTabProcessed(tab);
+        processedTabs.push(tabId);
+        onTabProcessed(tabId);
       }
 
       // Pass API key to readTab
-      const markdown = await readTab(tab.id, false, apiKey);
+      const markdown = await readTab(tabId, false, apiKey);
       if (markdown) {
-        markdownContents[tab.id] = markdown;
+        markdownContents[tabId] = markdown;
       }
     }
   }
@@ -140,14 +97,13 @@ export const readTabs = async (
 export function historyToMessages(
   data: {
     text: string;
-    tabs?: BrowserTab[];
+    usedTabs?: number[];
     highlightedText?: Record<number, string>;
-    currentTabId?: number;
+    currentTabId?: number | null;
   },
-  chatHistory: any[],
+  chatHistory: ChatHistory,
   markdownContents?: Record<number, string>,
-  tabs?: BrowserTab[],
-  currentTabId?: number
+  tabs?: Record<number, BrowserTab>
 ): Omit<Message, "id">[] {
   // Create an array to hold the formatted messages
   const messages: Omit<Message, "id">[] = [];
@@ -155,23 +111,25 @@ export function historyToMessages(
   let context = "";
 
   // Process markdown contents from tabs if available
-  if (markdownContents) {
-    const currentTabIdStr = currentTabId?.toString();
-
-    console.log("Current tab ID:", currentTabIdStr);
-    console.log("Markdown contents:", markdownContents);
-
+  if (markdownContents && tabs) {
     // Process current tab first if it exists in the markdown contents
-    if (currentTabIdStr && markdownContents[currentTabIdStr]) {
-      const currentTab = tabs?.find((t) => t.id.toString() === currentTabIdStr);
+    if (data.currentTabId && markdownContents[data.currentTabId]) {
+      const currentTab = tabs[data.currentTabId];
       const tabTitle = currentTab?.title || "Current Tab";
-      context += `CONTENT FROM CURRENT TAB '${tabTitle}' (ID: ${currentTabIdStr}):\n${markdownContents[currentTabIdStr]}\n---\n\n`;
+      context += `CONTENT FROM CURRENT TAB '${tabTitle}' (ID: ${
+        data.currentTabId
+      }):\n${markdownContents[data.currentTabId]}\n---\n\n`;
     }
 
     // Then process other tabs
-    for (const tabId in markdownContents) {
-      if (markdownContents.hasOwnProperty(tabId) && tabId !== currentTabIdStr) {
-        const tab = data.tabs?.find((t) => t.id.toString() === tabId);
+    for (let tabIdStr in data.usedTabs) {
+      const tabId = parseInt(tabIdStr);
+      if (data.currentTabId && tabId === data.currentTabId) continue; // Skip current tab
+      if (
+        markdownContents.hasOwnProperty(tabId) &&
+        tabId !== data.currentTabId
+      ) {
+        const tab = tabs[tabId];
         if (!tab) continue; // Skip if tab is not found
         const tabTitle = tab?.title || "Unknown Tab";
         context += `CONTENT FROM TAB '${tabTitle}' (ID: ${tabId}):\n${markdownContents[tabId]}\n---\n\n`;
@@ -190,37 +148,8 @@ export function historyToMessages(
   // Add previous messages from chat history
   console.log("Chat history:", chatHistory);
   for (const msg of chatHistory) {
-    console.log(msg);
-    // Skip messages that are not completed (like streaming ones)
-    if (msg.status === "streaming") continue;
-
-    // Map "user" and "assistant" to the roles expected by the AI
     const role = msg.sender === "user" ? "user" : "assistant";
-
-    let messageContent = msg.message;
-
-    // If it's a user message and has highlighted text, include it in the content
-    if (
-      role === "user" &&
-      msg.highlightedText != "" &&
-      Object.keys(msg.highlightedText).length > 0
-    ) {
-      messageContent += "\n\nUSER HIGHLIGHT TEXT FROM TABs:";
-
-      // Add highlighted text from each tab
-      for (const tabId in msg.highlightedText) {
-        if (msg.highlightedText[tabId] === "") continue; // Skip empty highlights
-        if (msg.highlightedText.hasOwnProperty(tabId)) {
-          // Find tab title if possible
-          const tab =
-            msg.tabs?.find((t) => t.id.toString() === tabId) ||
-            tabs?.find((t) => t.id.toString() === tabId);
-          const tabTitle = tab?.title || `Tab ${tabId}`;
-
-          messageContent += `\n\nUSER HIGHLIGHT TEXT FROM TITLE "${tabTitle}" (ID: ${tabId}):\n${msg.highlightedText[tabId]}\n`;
-        }
-      }
-    }
+    const messageContent = msg.message;
 
     messages.push({
       role,
@@ -237,9 +166,7 @@ export function historyToMessages(
       if (data.highlightedText[tabId] === "") continue; // Skip empty highlights
       if (data.highlightedText.hasOwnProperty(tabId)) {
         // Find tab title if possible
-        const tab =
-          data.tabs?.find((t) => t.id.toString() === tabId) ||
-          tabs?.find((t) => t.id.toString() === tabId);
+        const tab = tabs ? tabs[parseInt(tabId)] : null;
         const tabTitle = tab?.title || `Tab ${tabId}`;
 
         user_text += `\n\nUSER HIGHLIGHT TEXT FROM TITLE "${tabTitle}" (ID: ${tabId}):\n${data.highlightedText[tabId]}\n`;
@@ -259,33 +186,28 @@ export function historyToMessages(
 export async function generateAIResponse(
   data: {
     text: string;
-    tabs: BrowserTab[];
-    model: string;
+    usedTabs: number[];
     highlightedText: Record<number, string>;
-    currentTabId: number;
+    currentTabId: number | null;
   },
+  modelId: string,
+  useSearch: boolean,
+  tabs: Record<number, BrowserTab>,
   chatHistory: any[],
   markdownContents: Record<number, string>,
   onStreamUpdate: (text: string) => void,
   apiKey?: string // Add API key parameter
 ): Promise<string> {
-  const messages = historyToMessages(
-    data,
-    chatHistory,
-    markdownContents,
-    data.tabs,
-    data.currentTabId
-  );
+  const messages = historyToMessages(data, chatHistory, markdownContents, tabs);
 
   console.log("Messages for AI:", messages);
 
   try {
-    // Create GoogleAI instance with provided API key
-    const googleAIInstance = new GoogleAI(apiKey);
 
     const { textStream, sources, providerMetadata } = streamText({
-      model: googleAIInstance.getModel(data.model, {
-        useSearchGrounding: true,
+      model: getModel(modelId, {
+        apiKey: apiKey,
+        useSearchGrounding: useSearch,
         dynamicRetrievalConfig: {
           mode: "MODE_UNSPECIFIED", // "MODE_DYNAMIC", // MODE_UNSPECIFIED
           dynamicThreshold: 0.8,
@@ -305,17 +227,7 @@ export async function generateAIResponse(
       onStreamUpdate(fullText);
     }
 
-    // access the grounding metadata. Casting to the provider metadata type
-    // is optional but provides autocomplete and type safety.
-    const metadata = providerMetadata?.google as
-    | GoogleGenerativeAIProviderMetadata
-    | undefined;
-    const groundingMetadata = metadata?.groundingMetadata;
-    const safetyRatings = metadata?.safetyRatings;
-
-    console.log("Grounding Metadata:", groundingMetadata);
-    console.log("Safety Ratings:", safetyRatings);
-    console.log("Sources:", sources);
+    console.log("providerMetadata", providerMetadata)
 
     return fullText;
   } catch (error) {
@@ -344,4 +256,4 @@ export async function generateAIResponse(
 
 // Function to convert HTML to markdown (import from existing code)
 import { convertHtmlToMarkdown } from "dom-to-semantic-markdown";
-import { get } from "react-hook-form";
+import { ChatHistory } from "@/entrypoints/sidepanel/types";

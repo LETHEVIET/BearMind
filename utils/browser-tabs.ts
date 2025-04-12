@@ -8,8 +8,8 @@ export interface BrowserTab {
 }
 
 export interface BrowserTabsResult {
-  currentTab: BrowserTab | null;
-  otherTabs: BrowserTab[];
+  currentTabId: number;
+  tabs: Record<number,BrowserTab>;
 }
 
 // Define event callback types
@@ -27,34 +27,22 @@ const tabChangeListeners: Set<TabChangeCallback> = new Set();
  */
 export async function getBrowserTabs(): Promise<BrowserTabsResult> {
   // Check if browser extension APIs are available
-  if (typeof chrome !== 'undefined' && chrome.tabs) {
-    try {
-      // Using Chrome extension API
-      const allTabs = await chrome.tabs.query({ currentWindow: true });
-      const currentTabs = await chrome.tabs.query({ active: true, currentWindow: true });
-      const currentTab = currentTabs.length > 0 ? mapTabToBrowserTab(currentTabs[0]) : null;
-      
-      const otherTabs = allTabs
-        .filter(tab => !currentTab || tab.id !== currentTab.id)
-        .map(mapTabToBrowserTab);
-      
-      return { currentTab, otherTabs };
-    } catch (error) {
-      console.error('Failed to get browser tabs:', error);
-      return getFallbackTabs();
-    }
-  } else if (typeof browser !== 'undefined' && browser.tabs) {
+  
+  if (typeof browser !== 'undefined' && browser.tabs) {
     try {
       // Using Firefox extension API
       const allTabs = await browser.tabs.query({ currentWindow: true });
       const currentTabs = await browser.tabs.query({ active: true, currentWindow: true });
       const currentTab = currentTabs.length > 0 ? mapTabToBrowserTab(currentTabs[0]) : null;
+      const currentTabId = currentTab ? currentTab.id : 0;
+
+      const tabs: Record<number, BrowserTab> = {};
+
+      for (const tab of allTabs) {
+          tabs[tab.id? tab.id : 0] = mapTabToBrowserTab(tab);
+      }
       
-      const otherTabs = allTabs
-        .filter(tab => !currentTab || tab.id !== currentTab.id)
-        .map(mapTabToBrowserTab);
-      
-      return { currentTab, otherTabs };
+      return { currentTabId, tabs };
     } catch (error) {
       console.error('Failed to get browser tabs:', error);
       return getFallbackTabs();
@@ -89,10 +77,16 @@ function getFallbackTabs(): BrowserTabsResult {
     { id: 5, title: "Tailwind CSS - Rapidly build modern websites", favicon: "tailwindcss.com", url: "https://tailwindcss.com" },
   ];
   
+  // Create a record of tabs with their IDs as keys
+  const tabs: Record<number, BrowserTab> = {};
+  mockTabs.forEach(tab => {
+    tabs[tab.id] = tab;
+  });
+  
   // Pretend the first tab is active
   return {
-    currentTab: mockTabs[0],
-    otherTabs: mockTabs.slice(1)
+    currentTabId: mockTabs[0].id,
+    tabs
   };
 }
 
@@ -338,21 +332,21 @@ function setupHighlightMonitoring() {
   // Set up an interval to check for highlighted text in active tab more frequently
   activeTabIntervalId = setInterval(async () => {
     // Get active tab
-    const { currentTab } = await getBrowserTabs();
-    if (currentTab) {
+    const { currentTabId, tabs } = await getBrowserTabs();
+    if (currentTabId) {
       try {
-        const highlightedText = await getTabHighlightedText(currentTab.id);
+        const highlightedText = await getTabHighlightedText(currentTabId);
         const hasHighlight = !!highlightedText;
         
         // Check if highlight state or text content changed
-        const currentState = highlightState[currentTab.id];
+        const currentState = highlightState[currentTabId];
         const stateChanged = !currentState || 
                              currentState.hasHighlight !== hasHighlight ||
                              (hasHighlight && currentState.text !== highlightedText);
                              
         if (stateChanged) {
-          highlightState[currentTab.id] = { hasHighlight, text: highlightedText };
-          notifyHighlightChangeListeners(currentTab.id, hasHighlight, highlightedText);
+          highlightState[currentTabId] = { hasHighlight, text: highlightedText };
+          notifyHighlightChangeListeners(currentTabId, hasHighlight, highlightedText);
         }
       } catch (error) {
         console.error(`Failed to check highlight for active tab:`, error);
@@ -363,26 +357,28 @@ function setupHighlightMonitoring() {
   // Set up an interval to check for highlighted text in all tabs
   highlightMonitorIntervalId = setInterval(async () => {
     // Get all tabs
-    const { currentTab, otherTabs } = await getBrowserTabs();
+    const { currentTabId, tabs } = await getBrowserTabs();
     
     // Only check other tabs (active tab is handled separately)
-    for (const tab of otherTabs) {
+    for (const tabid of Object.keys(tabs)) {
+      const tab_id = parseInt(tabid, 0);
+      if (tab_id === currentTabId) continue; // Skip active tab
       try {
-        const highlightedText = await getTabHighlightedText(tab.id);
+        const highlightedText = await getTabHighlightedText(tab_id);
         const hasHighlight = !!highlightedText;
         
         // Check if highlight state or text content changed
-        const currentState = highlightState[tab.id];
+        const currentState = highlightState[tab_id];
         const stateChanged = !currentState || 
                              currentState.hasHighlight !== hasHighlight ||
                              (hasHighlight && currentState.text !== highlightedText);
                              
         if (stateChanged) {
-          highlightState[tab.id] = { hasHighlight, text: highlightedText };
-          notifyHighlightChangeListeners(tab.id, hasHighlight, highlightedText);
+          highlightState[tab_id] = { hasHighlight, text: highlightedText };
+          notifyHighlightChangeListeners(tab_id, hasHighlight, highlightedText);
         }
       } catch (error) {
-        console.error(`Failed to check highlight for tab ${tab.id}:`, error);
+        console.error(`Failed to check highlight for tab ${tab_id}:`, error);
       }
     }
   }, 1000); // Check other tabs once per second

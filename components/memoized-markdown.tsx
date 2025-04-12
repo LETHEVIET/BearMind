@@ -14,7 +14,49 @@ import {
 } from "./ui/code-block";
 import { useAppContext } from "./AppContext";
 
-const Pre = ({ children, language, codeString }) => {
+export interface MemoizedMarkdownProps {
+  /**
+   * The markdown content to render
+   */
+  content: string;
+  
+  /**
+   * Unique identifier for this markdown instance
+   * Used for generating keys for markdown blocks
+   */
+  id: string;
+}
+
+interface MemoizedMarkdownBlockProps {
+  /**
+   * The markdown content for this individual block
+   */
+  content: string;
+  
+  /**
+   * Unique key for this block
+   */
+  blockKey: string;
+}
+
+interface PreProps {
+  /**
+   * Children elements to render within the component
+   */
+  children?: React.ReactNode;
+  
+  /**
+   * Programming language of the code block
+   */
+  language: string;
+  
+  /**
+   * The actual code content to display
+   */
+  codeString: string;
+}
+
+const Pre = ({ children, language, codeString }: PreProps) => {
   const [copied, setCopied] = useState(false);
   const { ui } = useAppContext();
 
@@ -50,7 +92,7 @@ const Pre = ({ children, language, codeString }) => {
 };
 
 const MemoizedMarkdownBlock = memo(
-  ({ content, blockKey, tabs }) => {
+  ({ content, blockKey, }: MemoizedMarkdownBlockProps) => {
     return (
       <Markdown
         rehypePlugins={[rehypeRaw]}
@@ -77,7 +119,7 @@ const MemoizedMarkdownBlock = memo(
           p({ children }) {
             
             // Helper function to process a string for TAB references
-            const processString = (str, keyPrefix = '') => {
+            const processString = (str:string, keyPrefix = '') => {
               const tabRegex = /TAB-(\d+)/g;
               const parts = [];
               let lastIndex = 0;
@@ -94,16 +136,10 @@ const MemoizedMarkdownBlock = memo(
                 
                 // Extract the tab ID and find the actual tab in the tabs array
                 const tabId = Number(match[1]);
-                const tab = tabs?.find(t => t.id === tabId) || {
-                  id: tabId,
-                  title: `Tab ${tabId}`,
-                  url: `#tab-${tabId}`,
-                  favicon: null
-                };
                 
                 parts.push(
                   <div key={`${keyPrefix}tab-ref-${tabId}`} className="inline-block">
-                    <TabDisplayWithHover tab={tab} />
+                    <TabDisplayWithHover tabId={tabId} />
                   </div>
                 );
                 
@@ -166,12 +202,12 @@ const MemoizedMarkdownBlock = memo(
 
 MemoizedMarkdownBlock.displayName = "MemoizedMarkdownBlock";
 
-function parseMarkdownIntoBlocks(markdown) {
+function parseMarkdownIntoBlocks(markdown: string) {
   const tokens = marked.lexer(markdown);
   return tokens.map((token) => token.raw);
 }
 
-export const MemoizedMarkdown = memo(({ content, id, tabs}) => {
+export const MemoizedMarkdown = memo(({ content, id}: MemoizedMarkdownProps) => {
   const blocks = useMemo(() => parseMarkdownIntoBlocks(content), [content]);
 
   return blocks.map((block, index) => (
@@ -179,7 +215,6 @@ export const MemoizedMarkdown = memo(({ content, id, tabs}) => {
       content={block}
       blockKey={`${id}-block_${index}`}
       key={`${id}-block_${index}`}
-      tabs={tabs}
     />
   ));
 });

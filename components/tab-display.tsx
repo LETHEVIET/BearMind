@@ -2,9 +2,11 @@ import { Globe, Eye, EyeOff, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BrowserTab } from "@/utils/browser-tabs";
 
+import { useChatSettings } from "@/components/ChatSettingsContext";
+
 // Tab display component
 export interface TabDisplayProps {
-  tab: BrowserTab;
+  tabId: number;
   isCurrentTab?: boolean;
   useCurrentTab?: boolean;
   onToggleVisibility?: () => void;
@@ -13,13 +15,15 @@ export interface TabDisplayProps {
 }
 
 export const TabDisplay = ({
-  tab,
+  tabId,
   isCurrentTab = false,
   useCurrentTab = true,
   onToggleVisibility,
   onRemove,
   hasHighlight = "",
 }: TabDisplayProps) => {
+  const { tabs } = useChatSettings();
+  const tab = tabs[tabId];
   return (
     <div className="flex items-center gap-2 pl-1 gap-2 border rounded-lg text-xs">
       <div className="w-4 h-4 flex items-center justify-center">

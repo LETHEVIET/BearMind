@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { browser } from "wxt/browser";
 import { GeminiModel, getModelById } from "@/utils/gemini-models";
-import { tabReaders, TabReader } from "@/components/ChatSettingsContext";
+import { tabReaders, TabReader} from "@/components/ChatSettingsContext";
 import { useTranslation } from "react-i18next";
 
 // Define all the context sections
