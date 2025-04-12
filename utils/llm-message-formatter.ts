@@ -1,16 +1,26 @@
-import { createGoogleGenerativeAI, GoogleGenerativeAIProvider } from "@ai-sdk/google";
+import {
+  createGoogleGenerativeAI,
+  GoogleGenerativeAIProvider,
+} from "@ai-sdk/google";
 import { generateText, streamText } from "ai";
 import { BrowserTab } from "./browser-tabs";
 import { readMarkdownPrompt } from "./prompts";
 import { CoreMessage, Message } from "ai";
 import { browser } from "wxt/browser";
 import { toast } from "../hooks/use-toast";
-
-const getModel = (model: string, options?: { [key: string]: any }) => {
-  return createGoogleGenerativeAI({
-    ...options,
-  })(model);
-}
+import {
+  GenerateContentResponseUsageMetadata,
+  GoogleGenAI,
+  GroundingMetadata,
+} from "@google/genai";
+import {
+  Chat,
+  Content,
+  GenerateContentConfig,
+  Models,
+  Part,
+  Candidate,
+} from "@google/genai";
 
 // Function to read the content of a tab and convert it to markdown
 export const readTab = async (
@@ -47,15 +57,15 @@ export const readTab = async (
 
     if (!usingLlm) return markdown;
 
-    const { text } = await generateText({
-      model: getModel("gemini-2.0-flash-lite-preview-02-05", {
-        apiKey: apiKey
-      }),
-      system: "You are a helpful assistant name BearMind.",
-      messages: readMarkdownPrompt(markdown) as CoreMessage[],
-    });
+    // const { text } = await generateText({
+    //   model: getModel("gemini-2.0-flash-lite-preview-02-05", {
+    //     apiKey: apiKey,
+    //   }),
+    //   system: "You are a helpful assistant name BearMind.",
+    //   messages: readMarkdownPrompt(markdown) as CoreMessage[],
+    // });
 
-    return text;
+    return markdown;
   } catch (error) {
     console.error(`Error getting/converting content for tab ${tabId}:`, error);
     return null;
@@ -104,9 +114,13 @@ export function historyToMessages(
   chatHistory: ChatHistory,
   markdownContents?: Record<number, string>,
   tabs?: Record<number, BrowserTab>
-): Omit<Message, "id">[] {
+): {
+  history: Content[];
+  userMessage: Part;
+  systemPrompt: Part;
+} {
   // Create an array to hold the formatted messages
-  const messages: Omit<Message, "id">[] = [];
+  const messages: Content[] = [];
 
   let context = "";
 
@@ -138,22 +152,24 @@ export function historyToMessages(
   }
 
   // Add context as system message if we have any
-  if (context) {
-    messages.push({
-      role: "system",
-      content: `Use the following tab contents as context for answering the user's questions, If you mention specific tab write it as "TAB-<TAB-ID>" as a word no leading character and styling syntax before and after, for example "TAB-123", and it will be parsed and render properly in the UI:\n\n${context}`,
-    });
-  }
+  const systemPrompt =
+    "You are a helpful assistant name BearMind.\n" + context
+      ? `Use the following tab contents as context for answering the user's questions, If you mention specific tab in the context write it as "TAB-<TAB-ID>" as a word no leading character and styling syntax before and after, for example "TAB-123", and it will be parsed and render properly in the UI. Do not use TAB syntax for sources of search information:\n\n${context}`
+      : "";
 
   // Add previous messages from chat history
   console.log("Chat history:", chatHistory);
   for (const msg of chatHistory) {
-    const role = msg.sender === "user" ? "user" : "assistant";
+    const role = msg.sender === "user" ? "user" : "model";
     const messageContent = msg.message;
 
     messages.push({
       role,
-      content: messageContent,
+      parts: [
+        {
+          text: messageContent,
+        },
+      ],
     });
   }
 
@@ -163,6 +179,8 @@ export function historyToMessages(
   if (data.highlightedText && Object.keys(data.highlightedText).length > 0) {
     // Add highlighted text from each tab
     for (const tabId in data.highlightedText) {
+      // Skip if the tabId is not in usedTabs
+      if (data.usedTabs && !data.usedTabs.includes(parseInt(tabId))) continue;
       if (data.highlightedText[tabId] === "") continue; // Skip empty highlights
       if (data.highlightedText.hasOwnProperty(tabId)) {
         // Find tab title if possible
@@ -174,12 +192,24 @@ export function historyToMessages(
     }
   }
 
-  messages.push({
-    role: "user",
-    content: user_text,
-  });
+  // messages.push({
+  //   role: "user",
+  //   parts: [
+  //     {
+  //       text: user_text,
+  //     },
+  //   ],
+  // });
 
-  return messages.length > 0 ? messages : [];
+  return {
+    history: messages.length > 0 ? messages : [],
+    userMessage: {
+      text: user_text,
+    },
+    systemPrompt: {
+      text: systemPrompt,
+    },
+  };
 }
 
 // Function to generate AI response
@@ -195,39 +225,51 @@ export async function generateAIResponse(
   tabs: Record<number, BrowserTab>,
   chatHistory: any[],
   markdownContents: Record<number, string>,
-  onStreamUpdate: (text: string) => void,
+  onStreamUpdate: (
+    text: string,
+    usageMetadata: GenerateContentResponseUsageMetadata | undefined,
+    groundingMetadata: GroundingMetadata | undefined
+  ) => void,
   apiKey?: string // Add API key parameter
 ): Promise<string> {
-  const messages = historyToMessages(data, chatHistory, markdownContents, tabs);
+  const { history, userMessage, systemPrompt } = historyToMessages(
+    data,
+    chatHistory,
+    markdownContents,
+    tabs
+  );
 
-  console.log("Messages for AI:", messages);
+  console.log("modelId:", modelId);
+  console.log("Use search:", useSearch);
+  console.log("History:", history);
+  console.log("User message:", userMessage);
+  console.log("System prompt:", systemPrompt);
 
   try {
-
-    const { textStream, sources, providerMetadata } = streamText({
-      model: getModel(modelId, {
-        apiKey: apiKey,
-        useSearchGrounding: useSearch,
-        dynamicRetrievalConfig: {
-          mode: "MODE_UNSPECIFIED", // "MODE_DYNAMIC", // MODE_UNSPECIFIED
-          dynamicThreshold: 0.8,
-        },
-      }),
-      system: "You are a helpful assistant name BearMind.",
-      messages: messages,
-      onError({ error }) {
-        console.error("Error in stream:", error);
-        throw error; // Re-throw to be caught by the outer try-catch
+    const ai = new GoogleGenAI({ apiKey: apiKey });
+    const chat = ai.chats.create({
+      model: modelId,
+      history: history,
+      config: {
+        systemInstruction: systemPrompt,
+        tools: useSearch ? [{ googleSearch: {} }] : [],
       },
     });
 
+    const response = await chat.sendMessageStream({
+      message: userMessage,
+    });
+
     let fullText = "";
-    for await (const textPart of textStream) {
-      fullText += textPart;
-      onStreamUpdate(fullText);
+    let lastChunk = null; // Track the last chunk
+    for await (const chunk of response) {
+      fullText += chunk.text;
+      onStreamUpdate(fullText, chunk.usageMetadata, chunk.candidates?.[0]?.groundingMetadata);
+      lastChunk = chunk; // Store the current chunk as the last chunk
     }
 
-    console.log("providerMetadata", providerMetadata)
+    // Log the last chunk of the response instead of the full response object
+    console.log("Last AI response chunk:", lastChunk);
 
     return fullText;
   } catch (error) {

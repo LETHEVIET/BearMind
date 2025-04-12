@@ -388,7 +388,7 @@ export function QuoteFinder({ onClose }: QuoteFinderProps) {
         </div>
       )}
       
-      <div className="mt-2 text-sm text-muted-foreground">
+      <div className="mt-2   text-muted-foreground">
         {textChunks.length > 0 ? 
           `${textChunks.length} text segments indexed from page` : 
           isExtracting ? '' : 'Click "Refresh Content" to extract text from the current page'

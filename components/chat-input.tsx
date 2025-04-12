@@ -268,11 +268,11 @@ export default function ChatInput({
                     className="flex items-center gap-2 text-xs py-2"
                     onClick={() => toggleTabSelection(tab.id)}
                   >
-                    <div className="w-4 h-4 flex items-center justify-center">
+                    {/* <div className="w-4 h-4 flex items-center justify-center">
                       {selectedTabs.includes(tab.id) && (
                         <Check className="h-3.5 w-3.5" />
                       )}
-                    </div>
+                    </div> */}
                     <div className="w-4 h-4 flex items-center justify-center">
                       {tab.favicon ? (
                         <img src={tab.favicon} alt="" className="h-3.5 w-3.5" />

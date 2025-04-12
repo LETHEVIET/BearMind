@@ -1,5 +1,6 @@
 import React from "react";
 import { BrowserTab } from "@/utils/browser-tabs";
+import { GroundingMetadata } from "@google/genai";
 
 // Define types for chat messages
 export type MessageStatus = "streaming" | "reading" | "done";
@@ -27,6 +28,7 @@ export interface AssistantMessage extends BaseMessage {
   sender: "assistant";
   readingTabs?: number[];
   tabs?: BrowserTab[];
+  groundingMetadata?: GroundingMetadata
 }
 
 // Union type for all message types

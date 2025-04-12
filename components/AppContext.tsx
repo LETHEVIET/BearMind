@@ -3,6 +3,7 @@ import { browser } from "wxt/browser";
 import { GeminiModel, getModelById } from "@/utils/gemini-models";
 import { tabReaders, TabReader} from "@/components/ChatSettingsContext";
 import { useTranslation } from "react-i18next";
+import { GenerateContentResponseUsageMetadata } from "@google/genai";
 
 // Define all the context sections
 interface UISettings {
@@ -20,6 +21,7 @@ interface SessionData {
   highlightedTabs: Record<number, string>;
   useSearch: boolean;
   convertedTabIds: number[];
+  usageMetadata?: GenerateContentResponseUsageMetadata;
 }
 
 interface AppContextType {
@@ -43,6 +45,7 @@ interface AppContextType {
   addConvertedTabId: (tabId: number) => void;
   removeConvertedTabId: (tabId: number) => void;
   resetSession: () => void;
+  setUsageMetadata: (metadata?: GenerateContentResponseUsageMetadata) => void;
 }
 
 // Create context with a default undefined value
@@ -337,8 +340,13 @@ export const AppContextProvider: React.FC<{children: React.ReactNode}> = ({ chil
       ...prev,
       selectedTabs: [],
       highlightedTabs: {},
-      convertedTabIds: []
+      convertedTabIds: [],
+      usageMetadata: undefined
     }));
+  };
+  
+  const setUsageMetadata = (usageMetadata?: GenerateContentResponseUsageMetadata) => {
+    setSessionData(prev => ({...prev, usageMetadata}));
   };
   
   const value = {
@@ -361,7 +369,8 @@ export const AppContextProvider: React.FC<{children: React.ReactNode}> = ({ chil
     toggleTabSelection,
     addConvertedTabId,
     removeConvertedTabId,
-    resetSession
+    resetSession,
+    setUsageMetadata
   };
   
   return (

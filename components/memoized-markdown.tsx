@@ -7,11 +7,7 @@ import { Check, Copy } from "lucide-react";
 import { Button } from "./ui/button";
 import { ScrollArea, ScrollBar } from "./ui/scroll-area";
 import { TabDisplayWithHover } from "./tab-display-with-hover";
-import {
-  CodeBlock,
-  CodeBlockCode,
-  CodeBlockGroup,
-} from "./ui/code-block";
+import { CodeBlock, CodeBlockCode, CodeBlockGroup } from "./ui/code-block";
 import { useAppContext } from "./AppContext";
 
 export interface MemoizedMarkdownProps {
@@ -19,7 +15,7 @@ export interface MemoizedMarkdownProps {
    * The markdown content to render
    */
   content: string;
-  
+
   /**
    * Unique identifier for this markdown instance
    * Used for generating keys for markdown blocks
@@ -32,7 +28,7 @@ interface MemoizedMarkdownBlockProps {
    * The markdown content for this individual block
    */
   content: string;
-  
+
   /**
    * Unique key for this block
    */
@@ -44,12 +40,12 @@ interface PreProps {
    * Children elements to render within the component
    */
   children?: React.ReactNode;
-  
+
   /**
    * Programming language of the code block
    */
   language: string;
-  
+
   /**
    * The actual code content to display
    */
@@ -74,11 +70,7 @@ const Pre = ({ children, language, codeString }: PreProps) => {
             {language || "text"}
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="no"
-          onClick={handleCopy}
-        >
+        <Button variant="ghost" size="no" onClick={handleCopy}>
           {copied ? (
             <Check className="h-3 w-3 text-green-500" />
           ) : (
@@ -86,115 +78,138 @@ const Pre = ({ children, language, codeString }: PreProps) => {
           )}
         </Button>
       </CodeBlockGroup>
-      <CodeBlockCode code={codeString} language={language || "text"} theme={`github-${ui.theme}`} />
+      <CodeBlockCode
+        code={codeString}
+        language={language || "text"}
+        theme={`github-${ui.theme}`}
+      />
     </CodeBlock>
   );
 };
 
 const MemoizedMarkdownBlock = memo(
-  ({ content, blockKey, }: MemoizedMarkdownBlockProps) => {
+  ({ content, blockKey }: MemoizedMarkdownBlockProps) => {
+    const { ui } = useAppContext();
     return (
-      <Markdown
-        rehypePlugins={[rehypeRaw]}
-        remarkPlugins={[remarkGfm]}
-        components={{
-          h1: ({ children }) => <h1 className="text-3xl font-bold my-4 text-foreground">{children}</h1>,
-          h2: ({ children }) => <h2 className="text-2xl font-bold my-3 text-foreground">{children}</h2>,
-          h3: ({ children }) => <h3 className="text-xl font-bold my-2 text-foreground">{children}</h3>,
-          h4: ({ children }) => <h4 className="text-lg font-bold my-2 text-foreground">{children}</h4>,
-          h5: ({ children }) => <h5 className="text-base font-bold my-1 text-foreground">{children}</h5>,
-          h6: ({ children }) => <h6 className="text-sm font-bold my-1 text-foreground">{children}</h6>,
-          
-          ul: ({ children }) => <ul className="list-disc pl-6 my-2 text-foreground">{children}</ul>,
-          ol: ({ children }) => <ol className="list-decimal pl-6 my-2 text-foreground">{children}</ol>,
-          li: ({ children }) => <li className="my-1 text-foreground">{children}</li>,
-          
-          blockquote: ({ children }) => <blockquote className="border-l-4 border-border pl-4 py-1 my-2 italic bg-muted text-foreground">{children}</blockquote>,
-          
-          a: ({ href, children }) => <a href={href} className="text-accent hover:underline">{children}</a>,
-          
-          hr: () => <hr className="my-4 border-border" />,
-          
-          // Custom text renderer to detect and render tab references
-          p({ children }) {
-            
-            // Helper function to process a string for TAB references
-            const processString = (str:string, keyPrefix = '') => {
-              const tabRegex = /TAB-(\d+)/g;
-              const parts = [];
-              let lastIndex = 0;
-              let match;
-              
-              // Reset regex state
-              tabRegex.lastIndex = 0;
-              
-              while ((match = tabRegex.exec(str)) !== null) {
-                // Add text before the match
-                if (match.index > lastIndex) {
-                  parts.push(str.substring(lastIndex, match.index));
-                }
-                
-                // Extract the tab ID and find the actual tab in the tabs array
-                const tabId = Number(match[1]);
-                
-                parts.push(
-                  <div key={`${keyPrefix}tab-ref-${tabId}`} className="inline-block">
-                    <TabDisplayWithHover tabId={tabId} />
-                  </div>
-                );
-                
-                lastIndex = match.index + match[0].length;
-              }
-              
-              // If we found any matches
-              if (parts.length > 0) {
-                // Add any remaining text
-                if (lastIndex < str.length) {
-                  parts.push(str.substring(lastIndex));
-                }
-                
-                return parts;
-              }
-              
-              // No matches found, return the original string
-              return [str];
-            };
-            
-            // Handle children based on its type
-            if (Array.isArray(children)) {
-              // Process each child
-              const processedChildren = children.flatMap((child, index) => {
-                if (typeof child === 'string') {
-                  return processString(child, `array-${index}-`);
-                }
-                return child;
-              });
-              
-              return <p className="text-foreground">{processedChildren}</p>;
-            } else if (typeof children === 'string') {
-              // Process single string
-              const processed = processString(children);
-              return <p className="text-foreground">{processed}</p>;
-            }
-            
-            // Default case: just return children as is
-            return <p className="text-foreground">{children}</p>;
-          },
-          code({ node, inline, className = "blog-code", children, ...props }) {
-            const match = /language-(\w+)/.exec(className || "");
-            const codeString = String(children).replace(/\n$/, "");
-            return !inline && match ? (
-              <Pre language={match[1]} codeString={codeString} />
-            ) : (
-              <code className="bg-muted text-foreground px-1.5 py-0.5 rounded-sm" {...props}>
-                {codeString}
-              </code>
-            );
-          },
-        }}
+      <div
+        className={`${
+          ui.theme === "dark" && "dark:prose-invert"
+        } max-w-full`}
+        key={blockKey}
       >
-        {content}
-      </Markdown>
+        <Markdown
+          rehypePlugins={[rehypeRaw]}
+          remarkPlugins={[remarkGfm]}
+          components={{
+            h1: ({ children }) => <h1 className="text-3xl font-bold my-4 text-foreground">{children}</h1>,
+            h2: ({ children }) => <h2 className="text-2xl font-bold my-3 text-foreground">{children}</h2>,
+            h3: ({ children }) => <h3 className="text-xl font-bold my-2 text-foreground">{children}</h3>,
+            h4: ({ children }) => <h4 className="text-lg font-bold my-2 text-foreground">{children}</h4>,
+            h5: ({ children }) => <h5 className="text-base font-bold my-1 text-foreground">{children}</h5>,
+            h6: ({ children }) => <h6 className="text-sm font-bold my-1 text-foreground">{children}</h6>,
+
+            ul: ({ children }) => <ul className="list-disc pl-6 my-2 text-foreground">{children}</ul>,
+            ol: ({ children }) => <ol className="list-decimal pl-6 my-2 text-foreground">{children}</ol>,
+            li: ({ children }) => <li className="my-1 text-foreground">{children}</li>,
+
+            blockquote: ({ children }) => <blockquote className="border-l-4 border-border pl-4 py-1 my-2 italic bg-muted text-foreground">{children}</blockquote>,
+
+            a: ({ href, children }) => <a href={href} className="text-accent hover:underline">{children}</a>,
+
+            hr: () => <hr className="my-4 border-border" />,
+
+            // Custom text renderer to detect and render tab references
+            p({ children }) {
+              // Helper function to process a string for TAB references
+              const processString = (str: string, keyPrefix = "") => {
+                const tabRegex = /TAB-(\d+)/g;
+                const parts = [];
+                let lastIndex = 0;
+                let match;
+
+                // Reset regex state
+                tabRegex.lastIndex = 0;
+
+                while ((match = tabRegex.exec(str)) !== null) {
+                  // Add text before the match
+                  if (match.index > lastIndex) {
+                    parts.push(str.substring(lastIndex, match.index));
+                  }
+
+                  // Extract the tab ID and find the actual tab in the tabs array
+                  const tabId = Number(match[1]);
+
+                  parts.push(
+                    <div
+                      key={`${keyPrefix}tab-ref-${tabId}`}
+                      className="inline-block"
+                    >
+                      <TabDisplayWithHover tabId={tabId} />
+                    </div>
+                  );
+
+                  lastIndex = match.index + match[0].length;
+                }
+
+                // If we found any matches
+                if (parts.length > 0) {
+                  // Add any remaining text
+                  if (lastIndex < str.length) {
+                    parts.push(str.substring(lastIndex));
+                  }
+
+                  return parts;
+                }
+
+                // No matches found, return the original string
+                return [str];
+              };
+
+              // Handle children based on its type
+              if (Array.isArray(children)) {
+                // Process each child
+                const processedChildren = children.flatMap((child, index) => {
+                  if (typeof child === "string") {
+                    return processString(child, `array-${index}-`);
+                  }
+                  return child;
+                });
+
+                return <p className="text-foreground">{processedChildren}</p>;
+              } else if (typeof children === "string") {
+                // Process single string
+                const processed = processString(children);
+                return <p className="text-foreground">{processed}</p>;
+              }
+
+              // Default case: just return children as is
+              return <p className="text-foreground">{children}</p>;
+            },
+            code({
+              node,
+              inline,
+              className = "blog-code",
+              children,
+              ...props
+            }) {
+              const match = /language-(\w+)/.exec(className || "");
+              const codeString = String(children).replace(/\n$/, "");
+              return !inline && match ? (
+                  <Pre language={match[1]} codeString={codeString} />
+              ) : (
+                <code
+                  className="bg-muted text-foreground px-1.5 py-0.5 rounded-sm"
+                  {...props}
+                >
+                  {codeString}
+                </code>
+              );
+            },
+          }}
+        >
+          {content}
+        </Markdown>
+      </div>
     );
   },
   (prevProps, nextProps) => prevProps.content === nextProps.content
@@ -207,16 +222,18 @@ function parseMarkdownIntoBlocks(markdown: string) {
   return tokens.map((token) => token.raw);
 }
 
-export const MemoizedMarkdown = memo(({ content, id}: MemoizedMarkdownProps) => {
-  const blocks = useMemo(() => parseMarkdownIntoBlocks(content), [content]);
+export const MemoizedMarkdown = memo(
+  ({ content, id }: MemoizedMarkdownProps) => {
+    const blocks = useMemo(() => parseMarkdownIntoBlocks(content), [content]);
 
-  return blocks.map((block, index) => (
-    <MemoizedMarkdownBlock
-      content={block}
-      blockKey={`${id}-block_${index}`}
-      key={`${id}-block_${index}`}
-    />
-  ));
-});
+    return blocks.map((block, index) => (
+      <MemoizedMarkdownBlock
+        content={block}
+        blockKey={`${id}-block_${index}`}
+        key={`${id}-block_${index}`}
+      />
+    ));
+  }
+);
 
 MemoizedMarkdown.displayName = "MemoizedMarkdown";

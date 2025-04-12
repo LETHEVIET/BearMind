@@ -31,9 +31,9 @@ export function ApiKeySettings() {
           onChange={(e) => setTempApiKey(e.target.value)} 
           placeholder="Enter API key..." 
           type="password"
-          className='text-sm text-foreground'
+          className='  text-foreground'
         />
-        <Button className='text-sm' onClick={handleSave}>Save</Button>
+        <Button className=' ' onClick={handleSave}>Save</Button>
       </div>
       <p className="text-xs text-muted-foreground">
         Enter your Gemini API key to enable AI features

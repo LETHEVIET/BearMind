@@ -98,7 +98,7 @@ export function TabReaderPanel() {
                 onChange={() => toggleTabSelection(currentTab.id)}
                 className="mr-2"
               />
-              <label htmlFor={`tab-${currentTab.id}`} className="flex items-center text-sm">
+              <label htmlFor={`tab-${currentTab.id}`} className="flex items-center  ">
                 <span className="font-medium truncate">{currentTab.title}</span>
                 <span className="ml-1 text-xs text-muted-foreground">(current)</span>
               </label>
