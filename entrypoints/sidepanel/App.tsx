@@ -291,7 +291,7 @@ const App = () => {
           if (msg.id === assistantMessageId) {
             return {
               ...msg,
-              status: "streaming" as MessageStatus,
+              status: "generating" as MessageStatus,
               message: "",
             };
           }
@@ -311,7 +311,7 @@ const App = () => {
               return {
                 ...msg,
                 message: text,
-                status: "streaming" as MessageStatus,
+                status: "generating" as MessageStatus,
                 groundingMetadata: groundingMetadata,
               };
             }

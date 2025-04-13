@@ -94,6 +94,14 @@ export const ChatSettingsProvider = ({
   const [tabs, setTabs] = useState<Record<number, BrowserTab>>({});
   const [currentTabId, setCurrentTabId] = useState<number | null>(null);
 
+  // Create a new function to merge tabs instead of replacing them
+  const updateTabs = (newTabs: Record<number, BrowserTab>) => {
+    setTabs((prevTabs) => ({
+      ...prevTabs,
+      ...newTabs,
+    }));
+  };
+
   // Initialize settings from local storage if available
   useEffect(() => {
     const loadSettings = async () => {
@@ -200,30 +208,43 @@ export const ChatSettingsProvider = ({
   };
 
   // Provide all settings and functions to children
-  const value = {
-    selectedModel,
-    selectedTabReader,
-    apiKey,
-    useCurrentTab,
-    selectedTabs,
-    highlightedTabs,
-    useSearch,
-    tabs,
-    currentTabId,
-    setSelectedModel,
-    setSelectedTabReader,
-    setApiKey,
-    setUseCurrentTab,
-    setSelectedTabs,
-    setHighlightedTabs,
-    setUseSearch,
-    addSelectedTab,
-    removeSelectedTab,
-    toggleTabSelection,
-    updateHighlightedTab,
-    setTabs,
-    setCurrentTabId,
-  };
+  const value = React.useMemo(
+    () => ({
+      selectedModel,
+      selectedTabReader,
+      apiKey,
+      useCurrentTab,
+      selectedTabs,
+      highlightedTabs,
+      useSearch,
+      tabs,
+      currentTabId,
+      setSelectedModel,
+      setSelectedTabReader,
+      setApiKey,
+      setUseCurrentTab,
+      setSelectedTabs,
+      setHighlightedTabs,
+      setUseSearch,
+      addSelectedTab,
+      removeSelectedTab,
+      toggleTabSelection,
+      updateHighlightedTab,
+      setTabs: updateTabs, // Use the new updateTabs function instead of setTabs directly
+      setCurrentTabId,
+    }),
+    [
+      selectedModel,
+      selectedTabReader,
+      apiKey,
+      useCurrentTab,
+      selectedTabs,
+      highlightedTabs,
+      useSearch,
+      tabs,
+      currentTabId,
+    ]
+  );
 
   return (
     <ChatSettingsContext.Provider value={value}>

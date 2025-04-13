@@ -5,7 +5,6 @@ import { ApiKeySettings } from "@/components/settings/api-key-settings";
 import { ThemeSettings } from "@/components/settings/theme-settings";
 import { I18nSettings } from "@/components/settings/i18n-settings";
 import { FontSizeSettings } from "@/components/settings/font-size-settings";
-import { ConvertedTabsDrawer } from "@/components/converted-tabs-drawer";
 import {
   Drawer,
   DrawerContent,
@@ -34,7 +33,7 @@ export function SettingsModal({
 
   return (
     <div className="flex  items-center justify-end gap-2">
-      <Button
+      {/* <Button
         variant="ghost"
         size="no"
         onClick={() => setIsTabsDrawerOpen(true)}
@@ -43,7 +42,7 @@ export function SettingsModal({
         disabled={session.convertedTabIds.length === 0}
       >
         <Book className="h-4 w-4" />
-      </Button>
+      </Button> */}
 
       <Button
         variant="ghost"
@@ -100,10 +99,6 @@ export function SettingsModal({
       </Drawer>
 
       {/* Converted Tabs Drawer */}
-      <ConvertedTabsDrawer
-        open={isTabsDrawerOpen}
-        onOpenChange={setIsTabsDrawerOpen}
-      />
     </div>
   );
 }

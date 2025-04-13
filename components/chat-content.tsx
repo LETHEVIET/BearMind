@@ -34,6 +34,8 @@ import {
 import { useTranslation } from "react-i18next";
 import { Separator } from "./ui/separator";
 import { GroundingMetadata } from '@google/genai';
+import { MessageSquareMoreIcon } from "./ui/message-square-more";
+import { ScanTextIcon } from "./ui/scan-text";
 
 // Interface for the ChatContent component
 export interface ChatContentProps {
@@ -178,61 +180,27 @@ const ActionButtons = ({ onRegenerate, message }: ActionButtonsProps) => {
   );
 };
 
-const renderStatusIndicator = (status: string) => {
+const StatusIndicator = ({ status }: { status: string }) => {
   switch (status) {
-    case "typing":
-      return (
-        <div className="flex items-end gap-1 h-6 ml-2">
-          <div
-            className="w-2 h-2 bg-primary rounded-full animate-bounce"
-            style={{ animationDelay: "0ms" }}
-          ></div>
-          <div
-            className="w-2 h-2 bg-primary rounded-full animate-bounce"
-            style={{ animationDelay: "150ms" }}
-          ></div>
-          <div
-            className="w-2 h-2 bg-primary rounded-full animate-bounce"
-            style={{ animationDelay: "300ms" }}
-          ></div>
-        </div>
-      );
+    case "generating":
+      return <div className="flex items-center gap-1 text-muted-foreground">
+        <MessageSquareMoreIcon className="w-4 h-4"/>
+        <p className="text-xs italic">Generating response</p>
+      </div>;
     case "thinking":
-      return (
-        <div className="flex items-center gap-2 h-6 ml-2">
-          <div className="text-xs italic text-muted-foreground">
-            Thinking...
-          </div>
-          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-        </div>
-      );
+      return <div className="flex items-center gap-1 text-muted-foreground">
+        <MessageSquareMoreIcon className="w-4 h-4"/>
+        <p className="text-xs italic">Thinking...</p>
+      </div>;
     case "reading":
-      return (
-        <div className="flex items-center gap-2 h-6 ml-2">
-          <div className="text-xs italic text-muted-foreground">Reading...</div>
-          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-        </div>
-      );
+      return <div className="flex items-center gap-1 text-muted-foreground">
+        <ScanTextIcon className="w-4 h-4"/>
+        <p className="text-xs italic">Reading...</p>
+      </div>;
     default:
       return null;
   }
 };
-
-// const renderAvatarContent = (avatarIcon, name) => {
-//   if (!avatarIcon) {
-//     return name.substring(0, 2).toUpperCase();
-//   }
-
-//   if (typeof avatarIcon === "string") {
-//     return avatarIcon;
-//   }
-
-//   if (React.isValidElement(avatarIcon)) {
-//     return React.cloneElement(avatarIcon, { className: "h-3 w-3" });
-//   }
-
-//   return name.substring(0, 2).toUpperCase();
-// };
 
 const getStatusAvatar = (status: string) => {
   if (status === "reading") return "ʕ◉ᴥ◉ʔ";
@@ -275,7 +243,6 @@ const ChatMessage = ({
           <p className="text-sm font-semibold text-foreground align-middle">
             {name}
           </p>
-          {isAssistant && status && renderStatusIndicator(status)}
         </div>
         {!isAssistant && (
           <Button
@@ -361,11 +328,13 @@ const ChatMessage = ({
       {isAssistant && (
         <div className="flex justify-between items-center w-full">
           <div>
-            {status === "done" && (
+            {status === "done" ? (
               <ActionButtons
                 onRegenerate={() => onRegenerate(id)}
                 message={message}
               />
+            ) : (
+              status && <StatusIndicator status={status} />
             )}
           </div>
           <div>
@@ -373,7 +342,7 @@ const ChatMessage = ({
               <div className="text-xs text-muted-foreground">
                 {/* <p>{t("usage")}:</p> */}
                 <div className="flex flex-wrap items-center gap-1">
-                  {session.usageMetadata.totalTokenCount !== undefined && (
+                  {/* {session.usageMetadata.totalTokenCount !== undefined && (
                     <span className="">
                       Total: {session.usageMetadata.totalTokenCount} toks
                     </span>
@@ -392,7 +361,7 @@ const ChatMessage = ({
                       Response: {session.usageMetadata.candidatesTokenCount}{" "}
                       toks
                     </span>
-                  )}
+                  )} */}
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -449,7 +418,7 @@ const ChatMessage = ({
                                 </span>
                               </div>
                             )}
-                            {session.usageMetadata.cacheTokensDetails && (
+                            {/* {session.usageMetadata.cacheTokensDetails && (
                               <div className="flex justify-between">
                                 <span className="">Cache Details:</span>
                                 <span className="font-medium">
@@ -479,7 +448,7 @@ const ChatMessage = ({
                                   )}
                                 </span>
                               </div>
-                            )}
+                            )} */}
                             {session.usageMetadata.thoughtsTokenCount !==
                               undefined && (
                               <div className="flex justify-between">
@@ -544,11 +513,6 @@ const ChatMessage = ({
   );
 };
 
-const StreamingAnimation = () => (
-  <div className="flex   font-semibold text-foreground">
-    {/* Animation code here */}
-  </div>
-);
 
 const ChatContent = ({
   chatHistory,
@@ -567,7 +531,6 @@ const ChatContent = ({
           lastMessage={i === chatHistory.length - 1}
         />
       ))}
-      <StreamingAnimation />
       <div ref={bottomRef} />
       {/* This is the bottom ref for scrolling */}
     </div>

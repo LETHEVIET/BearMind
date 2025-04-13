@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { browser } from "wxt/browser";
 import { GeminiModel, getModelById } from "@/utils/gemini-models";
 import { tabReaders, TabReader} from "@/components/ChatSettingsContext";
@@ -349,7 +349,7 @@ export const AppContextProvider: React.FC<{children: React.ReactNode}> = ({ chil
     setSessionData(prev => ({...prev, usageMetadata}));
   };
   
-  const value = {
+  const value = useMemo(() => ({
     ui: uiSettings,
     session: sessionData,
     
@@ -371,7 +371,7 @@ export const AppContextProvider: React.FC<{children: React.ReactNode}> = ({ chil
     removeConvertedTabId,
     resetSession,
     setUsageMetadata
-  };
+  }), [uiSettings, sessionData]);
   
   return (
     <AppContext.Provider value={value}>
