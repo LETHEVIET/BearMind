@@ -77,6 +77,7 @@ export const readTab = async (
 export const readTabs = async (
   usedTabs: number[],
   convertedTabIds: number[],
+  tabs: Record<number, BrowserTab>,
   onTabProcessed?: (processedTab: number) => void,
   apiKey?: string // Add API key parameter
 ): Promise<Record<number, string>> => {
@@ -85,9 +86,6 @@ export const readTabs = async (
   const processedTabs: number[] = [];
 
   // Fetch all tabs to get their URLs
-  const { tabs } = await import("./browser-tabs").then((m) =>
-    m.getBrowserTabs()
-  );
 
   // Only process tabs that haven't been converted yet
   for (const tabId of usedTabs) {

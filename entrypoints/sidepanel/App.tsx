@@ -267,6 +267,7 @@ const App = () => {
         newMarkdownContents = await readTabs(
           data.usedTabs,
           session.convertedTabIds,
+          tabs,
           updateTabProcessingStatus,
           session.apiKey // Pass the API key from context
         );
