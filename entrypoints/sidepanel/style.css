@@ -8,5 +8,49 @@ body {
   font-family: 'Inter Variable', sans-serif;
 }
 
+.tiptap {
+  :first-child {
+    margin-top: 0;
+  }
+
+  .mention {
+    border-radius: 0.25rem;
+    padding: 0.125rem 0.25rem;
+    background-color: rgba(var(--primary), 0.1);
+    color: rgb(var(--primary));
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  
+  .mention-command {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.375rem !important;
+  }
+  
+  .mention-icon {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    color: rgb(var(--muted-foreground));
+    pointer-events: none;
+    height: 0;
+  }
+
+  p {
+    margin-bottom: 0.5rem;
+  }
+}
+
+/* Command suggestion styles */
+.tippy-box {
+  border-radius: 0.375rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
 
 

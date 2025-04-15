@@ -16,7 +16,7 @@ export const tabReaders: TabReader[] = [
     name: "DOM to Markdown",
   },
   {
-    id: "gemini-2.0-flash-exp",
+    id: "gemini-2.0-flash-001-exp",
     name: "LLM reader",
   },
 ];
@@ -34,6 +34,7 @@ export interface ChatSettings {
   useCurrentTab: boolean;
   selectedTabs: number[];
   highlightedTabs: Record<number, string>;
+  tabsToReread: number[];  // Track which tabs need to be reread
 
   // Tab management
   tabs: Record<number, BrowserTab>;
@@ -58,6 +59,10 @@ export interface ChatSettings {
   removeSelectedTab: (tabId: number) => void;
   toggleTabSelection: (tabId: number) => void;
   updateHighlightedTab: (tabId: number, highlightedText: string) => void;
+  addTabToReread: (tabId: number) => void;  // Add a tab to be reread
+  removeTabFromReread: (tabId: number) => void;  // Remove a tab from being reread
+  toggleTabReread: (tabId: number) => void;  // Toggle tab reread status
+  clearTabsToReread: () => void;  // Clear all tabs to reread
 }
 
 // Create the context with a default value
@@ -71,9 +76,9 @@ export const ChatSettingsProvider = ({
 }) => {
   // Initialize state for all settings
   const [selectedModel, setSelectedModel] = useState<GeminiModel>(
-    getModelById("gemini-2.0-flash-exp") || {
-      id: "gemini-2.0-flash-exp",
-      name: "Gemini 2.0 Flash Experimental",
+    getModelById("gemini-2.0-flash-001") || {
+      id: "gemini-2.0-flash-001",
+      name: "Gemini 2.0 Flash",
       inputs: "",
       outputs: "",
       description: "",
@@ -89,6 +94,7 @@ export const ChatSettingsProvider = ({
   const [highlightedTabs, setHighlightedTabs] = useState<
     Record<number, string>
   >({});
+  const [tabsToReread, setTabsToReread] = useState<number[]>([]); // State for tabs to reread
   const [useSearch, setUseSearch] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [tabs, setTabs] = useState<Record<number, BrowserTab>>({});
@@ -207,6 +213,28 @@ export const ChatSettingsProvider = ({
     }));
   };
 
+  const addTabToReread = (tabId: number) => {
+    if (!tabsToReread.includes(tabId)) {
+      setTabsToReread([...tabsToReread, tabId]);
+    }
+  };
+
+  const removeTabFromReread = (tabId: number) => {
+    setTabsToReread(tabsToReread.filter((id) => id !== tabId));
+  };
+
+  const toggleTabReread = (tabId: number) => {
+    if (tabsToReread.includes(tabId)) {
+      removeTabFromReread(tabId);
+    } else {
+      addTabToReread(tabId);
+    }
+  };
+
+  const clearTabsToReread = () => {
+    setTabsToReread([]);
+  };
+
   // Provide all settings and functions to children
   const value = React.useMemo(
     () => ({
@@ -216,6 +244,7 @@ export const ChatSettingsProvider = ({
       useCurrentTab,
       selectedTabs,
       highlightedTabs,
+      tabsToReread,
       useSearch,
       tabs,
       currentTabId,
@@ -230,6 +259,10 @@ export const ChatSettingsProvider = ({
       removeSelectedTab,
       toggleTabSelection,
       updateHighlightedTab,
+      addTabToReread,
+      removeTabFromReread,
+      toggleTabReread,
+      clearTabsToReread,
       setTabs: updateTabs, // Use the new updateTabs function instead of setTabs directly
       setCurrentTabId,
     }),
@@ -240,6 +273,7 @@ export const ChatSettingsProvider = ({
       useCurrentTab,
       selectedTabs,
       highlightedTabs,
+      tabsToReread,
       useSearch,
       tabs,
       currentTabId,

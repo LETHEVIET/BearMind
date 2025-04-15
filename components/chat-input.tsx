@@ -21,7 +21,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Textarea } from "./ui/textarea";
+import { TipTapEditor } from "./ui/tiptap-editor";
 import {
   BrowserTab,
   getBrowserTabs,
@@ -35,7 +35,7 @@ import { useChatSettings } from "@/components/ChatSettingsContext";
 import { SearchToggleButton } from "@/components/search-toggle-button";
 
 import { DEFAULT_ACTIONS } from "@/utils/action-button";
-import { BrowserTabsResult } from '../utils/browser-tabs';
+import { BrowserTabsResult } from "../utils/browser-tabs";
 
 const actions = DEFAULT_ACTIONS;
 
@@ -67,7 +67,7 @@ export default function ChatInput({
     removeSelectedTab,
     updateHighlightedTab,
     setTabs,
-    setCurrentTabId
+    setCurrentTabId,
   } = useChatSettings();
 
   // Local state for query and browser tabs
@@ -164,7 +164,7 @@ export default function ChatInput({
   const handleModelSelect = (model: GeminiModel) => {
     setSelectedModel(model);
   };
-  
+
   const handleSubmit = () => {
     if (!query.trim()) return; // Don't submit empty queries
 
@@ -193,14 +193,6 @@ export default function ChatInput({
 
     // Clear the input after submission
     setQuery("");
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Submit when Enter is pressed without Shift
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault(); // Prevent new line
-      handleSubmit();
-    }
   };
 
   // Get selected tab objects
@@ -314,15 +306,11 @@ export default function ChatInput({
 
         {/* Input row */}
         <div className="w-full p-1">
-          <Textarea
-            ref={textareaRef}
-            placeholder="What do you want to know?"
+          <TipTapEditor
             value={query}
-            onChange={handleTextareaChange}
-            onKeyDown={handleKeyDown}
-            rows={1}
-            className="w-full px-1 border-none bg-transparent text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 text-xs min-h-[24px] max-h-[500px] overflow-y-auto resize-none"
-            onInput={adjustTextareaHeight}
+            onChange={setQuery}
+            onSubmit={handleSubmit}
+            placeholder="What do you want to know?"
           />
         </div>
 
@@ -370,9 +358,7 @@ export default function ChatInput({
                   size={"no"}
                   className="hover:bg-muted/80 text-foreground rounded-full gap-0"
                 >
-                  <span className="text-xs">
-                    {selectedModel.name}
-                  </span>
+                  <span className="text-xs">{selectedModel.name}</span>
                   <ChevronDown className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>

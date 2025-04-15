@@ -1,14 +1,21 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useMemo,
+} from "react";
 import { browser } from "wxt/browser";
 import { GeminiModel, getModelById } from "@/utils/gemini-models";
-import { tabReaders, TabReader} from "@/components/ChatSettingsContext";
+import { tabReaders, TabReader } from "@/components/ChatSettingsContext";
 import { useTranslation } from "react-i18next";
 import { GenerateContentResponseUsageMetadata } from "@google/genai";
+import { getModelList } from "@/utils/llm-message-formatter";
 
 // Define all the context sections
 interface UISettings {
-  theme: 'light' | 'dark';
-  fontSize: 'small' | 'medium' | 'large';
+  theme: "light" | "dark";
+  fontSize: "small" | "medium" | "large";
   language: string;
 }
 
@@ -27,12 +34,12 @@ interface SessionData {
 interface AppContextType {
   ui: UISettings;
   session: SessionData;
-  
+
   // UI actions
-  setTheme: (theme: 'light' | 'dark') => void;
-  setFontSize: (size: 'small' | 'medium' | 'large') => void;
+  setTheme: (theme: "light" | "dark") => void;
+  setFontSize: (size: "small" | "medium" | "large") => void;
   setLanguage: (lang: string) => void;
-  
+
   // Session actions
   setSelectedModel: (model: GeminiModel) => void;
   setSelectedTabReader: (reader: TabReader) => void;
@@ -52,24 +59,26 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 // Provider component
-export const AppContextProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
+export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const { i18n } = useTranslation();
-  
+
   // Initialize state with default values
   const [uiSettings, setUISettings] = useState<UISettings>({
-    theme: 'light',
-    fontSize: 'medium',
-    language: 'en'
+    theme: "light",
+    fontSize: "medium",
+    language: "en",
   });
-  
+
   const [sessionData, setSessionData] = useState<SessionData>({
-    selectedModel: getModelById("gemini-2.0-flash-exp") || {
-      id: "gemini-2.0-flash-exp",
-      name: "Gemini 2.0 Flash Experimental",
+    selectedModel: getModelById("gemini-2.0-flash-001") || {
+      id: "gemini-2.0-flash-001",
+      name: "Gemini 2.0 Flash",
       inputs: "",
       outputs: "",
       description: "",
-      rateLimits: { rpm: 0, tpm: 0, rpd: 0 }
+      rateLimits: { rpm: 0, tpm: 0, rpd: 0 },
     },
     selectedTabReader: tabReaders[0],
     apiKey: "",
@@ -77,47 +86,47 @@ export const AppContextProvider: React.FC<{children: React.ReactNode}> = ({ chil
     selectedTabs: [],
     highlightedTabs: {},
     useSearch: true,
-    convertedTabIds: []
+    convertedTabIds: [],
   });
-  
+
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Load settings from storage on mount
   useEffect(() => {
     const loadSettings = async () => {
       try {
         const data = await browser.storage.local.get([
-          'appSettings', 
-          'chatSettings', 
-          'geminiApiKey',
-          'theme',
-          'i18n',
-          'uiSettings'
+          "appSettings",
+          "chatSettings",
+          "geminiApiKey",
+          "theme",
+          "i18n",
+          "uiSettings",
         ]);
-        
+
         // Load UI settings
         if (data.uiSettings) {
           try {
             const uiData = JSON.parse(data.uiSettings);
-            setUISettings(prevSettings => ({
+            setUISettings((prevSettings) => ({
               ...prevSettings,
-              ...uiData
+              ...uiData,
             }));
           } catch (e) {
-            console.error('Error parsing UI settings:', e);
+            console.error("Error parsing UI settings:", e);
           }
         }
-        
+
         // Load theme separately (for backward compatibility)
         if (data.theme) {
-          setUISettings(prev => ({ ...prev, theme: data.theme }));
+          setUISettings((prev) => ({ ...prev, theme: data.theme }));
         }
-        
+
         // Load language separately (for backward compatibility)
         if (data.i18n) {
-          setUISettings(prev => ({ ...prev, language: data.i18n }));
+          setUISettings((prev) => ({ ...prev, language: data.i18n }));
         }
-        
+
         // Load session data (previously chat settings)
         if (data.chatSettings) {
           try {
@@ -125,82 +134,100 @@ export const AppContextProvider: React.FC<{children: React.ReactNode}> = ({ chil
             if (sessionSettings.selectedModelId) {
               const model = getModelById(sessionSettings.selectedModelId);
               if (model) {
-                setSessionData(prev => ({...prev, selectedModel: model}));
+                setSessionData((prev) => ({ ...prev, selectedModel: model }));
               }
             }
-            
+
             if (sessionSettings.selectedTabReaderId) {
-              const reader = tabReaders.find(r => r.id === sessionSettings.selectedTabReaderId);
+              const reader = tabReaders.find(
+                (r) => r.id === sessionSettings.selectedTabReaderId
+              );
               if (reader) {
-                setSessionData(prev => ({...prev, selectedTabReader: reader}));
+                setSessionData((prev) => ({
+                  ...prev,
+                  selectedTabReader: reader,
+                }));
               }
             }
-            
-            if (sessionSettings.hasOwnProperty('useSearch')) {
-              setSessionData(prev => ({...prev, useSearch: sessionSettings.useSearch}));
+
+            if (sessionSettings.hasOwnProperty("useSearch")) {
+              setSessionData((prev) => ({
+                ...prev,
+                useSearch: sessionSettings.useSearch,
+              }));
             }
           } catch (e) {
-            console.error('Error parsing chat settings:', e);
+            console.error("Error parsing chat settings:", e);
           }
         }
-        
+
         // Load API key
         if (data.geminiApiKey) {
-          setSessionData(prev => ({...prev, apiKey: data.geminiApiKey}));
+          setSessionData((prev) => ({ ...prev, apiKey: data.geminiApiKey }));
         }
-        
+
         // Load app settings (for converted tab IDs, etc.)
         if (data.appSettings) {
           try {
             const appData = JSON.parse(data.appSettings);
             if (appData.convertedTabIds) {
-              setSessionData(prev => ({
+              setSessionData((prev) => ({
                 ...prev,
-                convertedTabIds: appData.convertedTabIds
+                convertedTabIds: appData.convertedTabIds,
               }));
             }
           } catch (e) {
-            console.error('Error parsing app settings:', e);
+            console.error("Error parsing app settings:", e);
           }
         }
       } catch (error) {
-        console.error('Error loading app context settings:', error);
+        console.error("Error loading app context settings:", error);
       } finally {
         setIsLoading(false);
       }
     };
-    
+
     loadSettings();
   }, []);
-  
+
+  useEffect(() => {
+    getModelList(sessionData.apiKey)
+      .then((models) => {
+        console.log("Available models:", models);
+      })
+      .catch((err) => {
+        console.error("Error fetching models:", err);
+      });
+  }, [sessionData.apiKey]);
+
   // Save UI settings when they change
   useEffect(() => {
     if (isLoading) return;
-    
+
     const saveUISettings = async () => {
       try {
         // Save full UI settings object
         await browser.storage.local.set({
-          uiSettings: JSON.stringify(uiSettings)
+          uiSettings: JSON.stringify(uiSettings),
         });
-        
+
         // Also save individual settings for backward compatibility
-        await browser.storage.local.set({ 
+        await browser.storage.local.set({
           theme: uiSettings.theme,
-          i18n: uiSettings.language
+          i18n: uiSettings.language,
         });
       } catch (error) {
-        console.error('Error saving UI settings:', error);
+        console.error("Error saving UI settings:", error);
       }
     };
-    
+
     saveUISettings();
   }, [uiSettings, isLoading]);
-  
+
   // Save session settings when they change
   useEffect(() => {
     if (isLoading) return;
-    
+
     const saveSessionSettings = async () => {
       try {
         // Save session data that should persist
@@ -209,182 +236,189 @@ export const AppContextProvider: React.FC<{children: React.ReactNode}> = ({ chil
           selectedTabReaderId: sessionData.selectedTabReader.id,
           useSearch: sessionData.useSearch,
         };
-        
+
         await browser.storage.local.set({
-          chatSettings: JSON.stringify(sessionToSave)
+          chatSettings: JSON.stringify(sessionToSave),
         });
-        
+
         // Save API key separately
         if (sessionData.apiKey) {
           await browser.storage.local.set({
-            geminiApiKey: sessionData.apiKey
+            geminiApiKey: sessionData.apiKey,
           });
         }
-        
+
         // Save app settings for converted tabs
         await browser.storage.local.set({
           appSettings: JSON.stringify({
-            convertedTabIds: sessionData.convertedTabIds
-          })
+            convertedTabIds: sessionData.convertedTabIds,
+          }),
         });
       } catch (error) {
-        console.error('Error saving session settings:', error);
+        console.error("Error saving session settings:", error);
       }
     };
-    
+
     saveSessionSettings();
   }, [sessionData, isLoading]);
-  
+
   // UI Actions
-  const setTheme = (theme: 'light' | 'dark') => {
-    setUISettings(prev => ({...prev, theme}));
+  const setTheme = (theme: "light" | "dark") => {
+    setUISettings((prev) => ({ ...prev, theme }));
     // Also notify other parts of the extension about theme change
-    browser.runtime.sendMessage({
-      messageType: "changeTheme",
-      content: theme
-    }).catch(err => console.error('Error sending theme message:', err));
+    browser.runtime
+      .sendMessage({
+        messageType: "changeTheme",
+        content: theme,
+      })
+      .catch((err) => console.error("Error sending theme message:", err));
   };
-  
-  const setFontSize = (fontSize: 'small' | 'medium' | 'large') => {
-    setUISettings(prev => ({...prev, fontSize}));
-    
+
+  const setFontSize = (fontSize: "small" | "medium" | "large") => {
+    setUISettings((prev) => ({ ...prev, fontSize }));
+
     // Notify other parts of the extension about font size change
-    browser.runtime.sendMessage({
-      messageType: "changeFontSize",
-      content: fontSize
-    }).catch(err => console.error('Error sending font size message:', err));
+    browser.runtime
+      .sendMessage({
+        messageType: "changeFontSize",
+        content: fontSize,
+      })
+      .catch((err) => console.error("Error sending font size message:", err));
   };
-  
+
   const setLanguage = (language: string) => {
-    setUISettings(prev => ({...prev, language}));
+    setUISettings((prev) => ({ ...prev, language }));
     i18n.changeLanguage(language);
     // Also notify other parts of the extension about language change
-    browser.runtime.sendMessage({
-      messageType: "changeLocale",
-      content: language
-    }).catch(err => console.error('Error sending locale message:', err));
+    browser.runtime
+      .sendMessage({
+        messageType: "changeLocale",
+        content: language,
+      })
+      .catch((err) => console.error("Error sending locale message:", err));
   };
-  
+
   // Session Actions
   const setSelectedModel = (selectedModel: GeminiModel) => {
-    setSessionData(prev => ({...prev, selectedModel}));
+    setSessionData((prev) => ({ ...prev, selectedModel }));
   };
-  
+
   const setSelectedTabReader = (selectedTabReader: TabReader) => {
-    setSessionData(prev => ({...prev, selectedTabReader}));
+    setSessionData((prev) => ({ ...prev, selectedTabReader }));
   };
-  
+
   const setApiKey = (apiKey: string) => {
-    setSessionData(prev => ({...prev, apiKey}));
+    setSessionData((prev) => ({ ...prev, apiKey }));
   };
-  
+
   const setUseCurrentTab = (useCurrentTab: boolean) => {
-    setSessionData(prev => ({...prev, useCurrentTab}));
+    setSessionData((prev) => ({ ...prev, useCurrentTab }));
   };
-  
+
   const setSelectedTabs = (selectedTabs: number[]) => {
-    setSessionData(prev => ({...prev, selectedTabs}));
+    setSessionData((prev) => ({ ...prev, selectedTabs }));
   };
-  
+
   const updateHighlightedTab = (tabId: number, highlightedText: string) => {
-    setSessionData(prev => ({
-      ...prev, 
+    setSessionData((prev) => ({
+      ...prev,
       highlightedTabs: {
         ...prev.highlightedTabs,
-        [tabId]: highlightedText
-      }
+        [tabId]: highlightedText,
+      },
     }));
   };
-  
+
   const setUseSearch = (useSearch: boolean) => {
-    setSessionData(prev => ({...prev, useSearch}));
+    setSessionData((prev) => ({ ...prev, useSearch }));
   };
-  
+
   const toggleTabSelection = (tabId: number) => {
-    setSessionData(prev => {
+    setSessionData((prev) => {
       if (prev.selectedTabs.includes(tabId)) {
         return {
           ...prev,
-          selectedTabs: prev.selectedTabs.filter(id => id !== tabId)
+          selectedTabs: prev.selectedTabs.filter((id) => id !== tabId),
         };
       } else {
         return {
           ...prev,
-          selectedTabs: [...prev.selectedTabs, tabId]
+          selectedTabs: [...prev.selectedTabs, tabId],
         };
       }
     });
   };
-  
+
   const addConvertedTabId = (tabId: number) => {
-    setSessionData(prev => {
+    setSessionData((prev) => {
       if (!prev.convertedTabIds.includes(tabId)) {
         return {
           ...prev,
-          convertedTabIds: [...prev.convertedTabIds, tabId]
+          convertedTabIds: [...prev.convertedTabIds, tabId],
         };
       }
       return prev;
     });
   };
-  
+
   const removeConvertedTabId = (tabId: number) => {
-    setSessionData(prev => ({
+    setSessionData((prev) => ({
       ...prev,
-      convertedTabIds: prev.convertedTabIds.filter(id => id !== tabId)
+      convertedTabIds: prev.convertedTabIds.filter((id) => id !== tabId),
     }));
   };
-  
+
   const resetSession = () => {
-    setSessionData(prev => ({
+    setSessionData((prev) => ({
       ...prev,
       selectedTabs: [],
       highlightedTabs: {},
       convertedTabIds: [],
-      usageMetadata: undefined
+      usageMetadata: undefined,
     }));
   };
-  
-  const setUsageMetadata = (usageMetadata?: GenerateContentResponseUsageMetadata) => {
-    setSessionData(prev => ({...prev, usageMetadata}));
+
+  const setUsageMetadata = (
+    usageMetadata?: GenerateContentResponseUsageMetadata
+  ) => {
+    setSessionData((prev) => ({ ...prev, usageMetadata }));
   };
-  
-  const value = useMemo(() => ({
-    ui: uiSettings,
-    session: sessionData,
-    
-    // UI actions
-    setTheme,
-    setFontSize,
-    setLanguage,
-    
-    // Session actions
-    setSelectedModel,
-    setSelectedTabReader,
-    setApiKey,
-    setUseCurrentTab,
-    setSelectedTabs,
-    updateHighlightedTab,
-    setUseSearch,
-    toggleTabSelection,
-    addConvertedTabId,
-    removeConvertedTabId,
-    resetSession,
-    setUsageMetadata
-  }), [uiSettings, sessionData]);
-  
-  return (
-    <AppContext.Provider value={value}>
-      {children}
-    </AppContext.Provider>
+
+  const value = useMemo(
+    () => ({
+      ui: uiSettings,
+      session: sessionData,
+
+      // UI actions
+      setTheme,
+      setFontSize,
+      setLanguage,
+
+      // Session actions
+      setSelectedModel,
+      setSelectedTabReader,
+      setApiKey,
+      setUseCurrentTab,
+      setSelectedTabs,
+      updateHighlightedTab,
+      setUseSearch,
+      toggleTabSelection,
+      addConvertedTabId,
+      removeConvertedTabId,
+      resetSession,
+      setUsageMetadata,
+    }),
+    [uiSettings, sessionData]
   );
+
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
 
 // Custom hook to use the app context
 export const useAppContext = () => {
   const context = useContext(AppContext);
   if (context === undefined) {
-    throw new Error('useAppContext must be used within an AppContextProvider');
+    throw new Error("useAppContext must be used within an AppContextProvider");
   }
   return context;
 };

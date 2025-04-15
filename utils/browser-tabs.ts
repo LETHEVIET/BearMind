@@ -5,6 +5,7 @@ export interface BrowserTab {
   title: string;
   favicon?: string;
   url?: string;
+  type?: 'webpage' | 'youtube' | 'pdf' | 'other';
 }
 
 export interface BrowserTabsResult {
@@ -57,11 +58,25 @@ export async function getBrowserTabs(): Promise<BrowserTabsResult> {
  * Map browser tab to BrowserTab interface
  */
 function mapTabToBrowserTab(tab: any): BrowserTab {
+  let type: 'webpage' | 'youtube' | 'pdf' | 'other' = 'webpage';
+  
+  if (tab.url) {
+    // Check if the URL is a YouTube video
+    if (tab.url.includes('youtube.com/watch') || tab.url.includes('youtu.be/')) {
+      type = 'youtube';
+    }
+    // Check if the URL is a PDF
+    else if (tab.url.toLowerCase().endsWith('.pdf') || tab.url.includes('/pdf')) {
+      type = 'pdf';
+    }
+  }
+
   return {
     id: tab.id || 0,
     title: tab.title || 'Untitled Tab',
     favicon: tab.favIconUrl,
-    url: tab.url
+    url: tab.url,
+    type: type
   };
 }
 
@@ -70,11 +85,11 @@ function mapTabToBrowserTab(tab: any): BrowserTab {
  */
 function getFallbackTabs(): BrowserTabsResult {
   const mockTabs = [
-    { id: 1, title: "GitHub - Build software better, together", favicon: "github.com", url: "https://github.com" },
-    { id: 2, title: "Stack Overflow - Where Developers Learn & Share", favicon: "stackoverflow.com", url: "https://stackoverflow.com" },
-    { id: 3, title: "React - A JavaScript library for building user interfaces", favicon: "reactjs.org", url: "https://reactjs.org" },
-    { id: 4, title: "Next.js by Vercel - The React Framework", favicon: "nextjs.org", url: "https://nextjs.org" },
-    { id: 5, title: "Tailwind CSS - Rapidly build modern websites", favicon: "tailwindcss.com", url: "https://tailwindcss.com" },
+    { id: 1, title: "GitHub - Build software better, together", favicon: "github.com", url: "https://github.com", type: 'webpage' as const },
+    { id: 2, title: "Stack Overflow - Where Developers Learn & Share", favicon: "stackoverflow.com", url: "https://stackoverflow.com", type: 'webpage' as const },
+    { id: 3, title: "React - A JavaScript library for building user interfaces", favicon: "reactjs.org", url: "https://reactjs.org", type: 'webpage' as const },
+    { id: 4, title: "Next.js by Vercel - The React Framework", favicon: "nextjs.org", url: "https://nextjs.org", type: 'webpage' as const },
+    { id: 5, title: "Tailwind CSS - Rapidly build modern websites", favicon: "tailwindcss.com", url: "https://tailwindcss.com", type: 'webpage' as const },
   ];
   
   // Create a record of tabs with their IDs as keys

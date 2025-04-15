@@ -1,6 +1,6 @@
 import React from "react";
 import { BrowserTab } from "@/utils/browser-tabs";
-import { GroundingMetadata } from "@google/genai";
+import { CachedContent, GroundingMetadata, Part } from "@google/genai";
 
 // Define types for chat messages
 export type MessageStatus = "streaming" | "reading" | "done";
@@ -14,6 +14,9 @@ export interface BaseMessage {
   avatarIcon?: React.ReactNode | string;
   status?: MessageStatus;
   usedTabs?: number[];
+  cachedContent?: Part | Part[];
+  cached?: CachedContent;
+  cacheSystemInstructions?: string;
 }
 
 // User-specific message properties

@@ -31,7 +31,7 @@ export const TabDisplayWithHover = ({
           onMouseEnter={() => setIsHovering(true)}
           onMouseLeave={() => setIsHovering(false)}
         >
-          <div className="flex items-center gap-2 py-0 px-1 border rounded-sm w-fit">
+          <div className="flex items-center gap-2 py-0 px-1 border rounded-sm rounded-bl-none  w-fit">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 flex items-center justify-center">
                 {tab.favicon ? (

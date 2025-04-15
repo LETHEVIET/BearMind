@@ -51,7 +51,7 @@ console.log("Content script loaded");
 
 const App = () => {
   const { ui, session, resetSession, setUsageMetadata } = useAppContext();
-  const { tabs, selectedModel, useSearch } = useChatSettings();
+  const { tabs, selectedModel, useSearch, tabsToReread } = useChatSettings(); // Added tabsToReread here at component level
   const { t } = useTranslation();
 
   const [chatHistory, setChatHistory] =
@@ -137,7 +137,7 @@ const App = () => {
     const userMessage = chatHistory[userMessageIndex] as UserMessage;
 
     // Delete the assistant message and all messages after it
-    setChatHistory((prevHistory) => prevHistory.slice(0, userMessageIndex));
+    setChatHistory((prevHistory) => prevHistory.slice(0, assistantMessageIndex));
 
     // Regenerate the response using the user message data
     const data = {
@@ -269,7 +269,8 @@ const App = () => {
           session.convertedTabIds,
           tabs,
           updateTabProcessingStatus,
-          session.apiKey // Pass the API key from context
+          session.apiKey, // Pass the API key from context
+          tabsToReread // Pass tabsToReread to force re-reading of specific tabs
         );
 
         // Update the list of converted tabs in the context
@@ -377,12 +378,12 @@ const App = () => {
           <div className="text-foreground">BearMind</div>
           <div className="flex items-center gap-2">
             {/* Add Quote Finder toggle button */}
-            <button
+            {/* <button
               onClick={() => setShowQuoteFinder(!showQuoteFinder)}
               className="px-2 py-1 rounded bg-secondary hover:bg-secondary/80 text-foreground"
             >
               {showQuoteFinder ? "Hide Quote Finder" : "Find Quote in Page"}
-            </button>
+            </button> */}
             <SettingsModal resetChat={resetChat} />
           </div>
         </div>

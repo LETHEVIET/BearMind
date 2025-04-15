@@ -39,7 +39,7 @@ export const geminiModels: GeminiModel[] = [
   },
   {
     name: "Gemini 2.0 Flash",
-    id: "gemini-2.0-flash",
+    id: "gemini-2.0-flash-001",
     inputs: "Audio, images, videos, and text",
     outputs: "Text, images (experimental), and audio (coming soon)",
     description: "Next generation features, speed, thinking, realtime streaming, and multimodal generation",
@@ -51,7 +51,7 @@ export const geminiModels: GeminiModel[] = [
   },
   {
     name: "Gemini 2.0 Flash-Lite",
-    id: "gemini-2.0-flash-lite",
+    id: "gemini-2.0-flash-001-lite",
     inputs: "Audio, images, videos, and text",
     outputs: "Text",
     description: "Cost efficiency and low latency",
@@ -63,7 +63,7 @@ export const geminiModels: GeminiModel[] = [
   },
   {
     name: "Gemini 1.5 Flash",
-    id: "gemini-1.5-flash",
+    id: "gemini-1.5-flash-002",
     inputs: "Audio, images, videos, and text",
     outputs: "Text",
     description: "Fast and versatile performance across a diverse variety of tasks",
@@ -122,8 +122,8 @@ export const geminiModels: GeminiModel[] = [
   //   }
   // },
   {
-    name: "Gemini 2.0 Flash Experimental",
-    id: "gemini-2.0-flash-exp",
+    name: "Gemini 2.0 Flash",
+    id: "gemini-2.0-flash-001",
     inputs: "Audio, images, videos, and text",
     outputs: "Text, images (experimental)",
     description: "Image generation capabilities",
@@ -135,7 +135,7 @@ export const geminiModels: GeminiModel[] = [
   },
   {
     name: "Gemini 2.0 Flash Thinking Experimental",
-    id: "gemini-2.0-flash-thinking-exp-01-21",
+    id: "gemini-2.0-flash-001-thinking-exp-01-21",
     inputs: "Audio, images, videos, and text",
     outputs: "Text",
     description: "Enhanced thinking capabilities",
@@ -147,7 +147,7 @@ export const geminiModels: GeminiModel[] = [
   },
   {
     name: "Gemma 3",
-    id: "gemma-3",
+    id: "gemma-3-27b-it",
     inputs: "Text",
     outputs: "Text",
     description: "Lightweight model for various tasks",
